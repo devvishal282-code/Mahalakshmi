@@ -27,3 +27,15 @@ Homestead.yaml
 Thumbs.db
 # AI tool configuration
 .claude/
+
+# AI tool configuration and instructions
+.claude/
+.mcp.json
+AGENTS.md
+CLAUDE.md
+
+# AI tool configuration and instructions
+.claude/
+.mcp.json
+AGENTS.md
+CLAUDE.md
