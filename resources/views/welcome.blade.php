@@ -5,8 +5,8 @@
 @section('content')
 <main id="home">
     <section class="hero" aria-label="Festive collection">
-        <video class="hero-video" autoplay muted loop playsinline preload="auto" poster="https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&w=1800&q=85" aria-label="Woman walking in a meadow">
-            <source src="{{ asset('storage/videos/hero-meadow.mp4') }}" type="video/mp4" />
+        <video class="hero-video" muted loop playsinline preload="none" data-deferred-autoplay poster="https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&w=1800&q=85" aria-label="Woman walking in a meadow">
+            <source data-src="{{ asset('storage/videos/hero-meadow.mp4') }}" type="video/mp4" />
         </video>
         <div class="hero-copy">
             <p>MAHALAKSHMI • THE ART OF LIVING BEAUTIFULLY</p>
@@ -41,35 +41,35 @@
         </div>
         <div class="look-strip" id="lookStrip">
             <article class="look-card video-card">
-                <video autoplay muted loop playsinline preload="metadata" poster="https://images.unsplash.com/photo-1610652492500-ded49ceeb378?auto=format&fit=crop&w=650&q=80">
-                    <source src="https://cdn.coverr.co/videos/coverr-woman-wearing-a-white-dress-5197/1080p.mp4" type="video/mp4">
+                <video muted loop playsinline preload="none" data-deferred-autoplay poster="https://images.unsplash.com/photo-1610652492500-ded49ceeb378?auto=format&fit=crop&w=650&q=80">
+                    <source data-src="https://cdn.coverr.co/videos/coverr-woman-wearing-a-white-dress-5197/1080p.mp4" type="video/mp4">
                 </video>
                 <span>Blooming ivory</span>
             </article>
 
             <article class="look-card video-card">
-                <video autoplay muted loop playsinline preload="metadata" poster="https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&w=650&q=80">
-                    <source src="https://cdn.coverr.co/videos/coverr-woman-walking-in-a-field-469/360p.mp4" type="video/mp4">
+                <video muted loop playsinline preload="none" data-deferred-autoplay poster="https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&w=650&q=80">
+                    <source data-src="https://cdn.coverr.co/videos/coverr-woman-walking-in-a-field-469/360p.mp4" type="video/mp4">
                 </video>
                 <span>Soft textures</span>
             </article>
 
             <article class="look-card video-card">
-                <video autoplay muted loop playsinline preload="metadata" poster="https://images.unsplash.com/photo-1605763240000-7e93b172d754?auto=format&fit=crop&w=650&q=80">
-                    <source src="https://cdn.coverr.co/videos/coverr-woman-wearing-a-white-dress-5197/1080p.mp4" type="video/mp4">
+                <video muted loop playsinline preload="none" data-deferred-autoplay poster="https://images.unsplash.com/photo-1605763240000-7e93b172d754?auto=format&fit=crop&w=650&q=80">
+                    <source data-src="https://cdn.coverr.co/videos/coverr-woman-wearing-a-white-dress-5197/1080p.mp4" type="video/mp4">
                 </video>
                 <span>Modern heirloom</span>
             </article>
 
             <article class="look-card video-card">
-                <video autoplay muted loop playsinline preload="metadata" poster="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=650&q=80">
-                    <source src="https://cdn.coverr.co/videos/coverr-woman-walking-in-a-field-469/360p.mp4" type="video/mp4">
+                <video muted loop playsinline preload="none" data-deferred-autoplay poster="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=650&q=80">
+                    <source data-src="https://cdn.coverr.co/videos/coverr-woman-walking-in-a-field-469/360p.mp4" type="video/mp4">
                 </video>
                 <span>Afterglow</span>
             </article>
             <article class="look-card video-card">
-                <video autoplay muted loop playsinline preload="metadata" poster="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=650&q=80">
-                    <source src="https://cdn.coverr.co/videos/coverr-woman-walking-in-a-field-469/360p.mp4" type="video/mp4">
+                <video muted loop playsinline preload="none" data-deferred-autoplay poster="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=650&q=80">
+                    <source data-src="https://cdn.coverr.co/videos/coverr-woman-walking-in-a-field-469/360p.mp4" type="video/mp4">
                 </video>
                 <span>Afterglow</span>
             </article>

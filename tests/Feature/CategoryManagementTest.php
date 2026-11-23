@@ -4,6 +4,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Crypt;
 
 uses(RefreshDatabase::class);
 
@@ -75,11 +76,12 @@ it('returns categories and product counts through the DataTables endpoint', func
         ->assertJsonPath('data.0.status', 'active')
         ->assertJsonPath('data.0.products_count', 1)
         ->assertJsonPath('data.0.created_at', $category->created_at->format('d M Y'))
-        ->assertJsonPath('data.0.actions', fn (string $actions): bool => str_contains($actions, 'admin-product-edit-button')
-            && str_contains($actions, 'admin-product-delete-button')
-            && str_contains($actions, 'data-swal-confirm=')
-            && str_contains($actions, route('admin.categories.edit', $category))
-            && str_contains($actions, route('admin.categories.destroy', $category)));
+        ->assertJsonPath('data.0.actions', fn (string $actions): bool => str_contains($actions, 'editCategory')
+            && str_contains($actions, 'deleteCategory')
+            && str_contains($actions, 'fa-edit')
+            && str_contains($actions, 'fa-trash-can')
+            && preg_match('/data-id="([^"]+)"/', $actions, $matches) === 1
+            && Crypt::decrypt($matches[1]) === $category->id);
 });
 
 it('creates a category for admins', function () {

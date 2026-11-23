@@ -1,3 +1,27 @@
+const deferredVideos = document.querySelectorAll('video[data-deferred-autoplay]');
+
+const startDeferredVideos = () => {
+  deferredVideos.forEach((video) => {
+    video.querySelectorAll('source[data-src]').forEach((source) => {
+      if (source.dataset.src) {
+        source.src = source.dataset.src;
+        source.removeAttribute('data-src');
+      }
+    });
+
+    video.autoplay = true;
+    video.load();
+  });
+};
+
+if (deferredVideos.length > 0) {
+  if (document.readyState === 'complete') {
+    startDeferredVideos();
+  } else {
+    window.addEventListener('load', startDeferredVideos, { once: true });
+  }
+}
+
 const strip = document.querySelector('#lookStrip');
 const previousButton = document.querySelector('.slide-prev');
 const nextButton = document.querySelector('.slide-next');

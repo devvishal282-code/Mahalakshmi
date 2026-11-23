@@ -5,10 +5,17 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreProductRequest;
 use App\Models\Category;
 use App\Models\Product;
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use RuntimeException;
 
 class ProductController extends Controller
 {
@@ -59,9 +66,7 @@ class ProductController extends Controller
 
         if ($columnName === 'category_name') {
             $query->orderBy(
-                Category::query()
-                    ->select('name')
-                    ->whereColumn('categories.id', 'products.category_id'),
+                Category::select('name')->whereColumn('categories.id', 'products.category_id'),
                 $direction
             );
         } elseif (is_string($columnName) && isset($sortableColumns[$columnName])) {
@@ -85,35 +90,26 @@ class ProductController extends Controller
                 'products.show_marketplace',
             ]);
 
-        $productData = $products->map(fn (Product $product): array => [
-            'name' => $product->name,
-            'category_name' => $product->category?->name ?? 'Uncategorized',
-            'description' => $product->description,
-            'price' => $product->price,
-            'stock_quantity' => $product->stock_quantity,
-            'image_path' => $product->image_path,
-            'status' => $product->status,
-            'show_marketplace' => $product->show_marketplace,
-            'actions' => sprintf(
-                '<div class="admin-product-actions">
-                    <a class="admin-product-action-button admin-product-edit-button" href="%s" aria-label="Edit %s" title="Edit">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5 5 5M4 20l4.2-.8L19 8.4 15.6 5 4.8 15.8 4 20Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>
-                    </a>
-                    <form method="POST" action="%s" class="admin-product-delete-form" data-swal-confirm="Are you sure you want to delete this product?">
-                        <input type="hidden" name="_token" value="%s">
-                        <input type="hidden" name="_method" value="DELETE">
-                        <button class="admin-product-action-button admin-product-delete-button" type="submit" aria-label="Delete %s" title="Delete">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"/></svg>
-                        </button>
-                    </form>
-                </div>',
-                e(route('admin.products.edit', $product)),
-                e($product->name),
-                e(route('admin.products.destroy', $product)),
-                e(csrf_token()),
-                e($product->name),
-            ),
-        ]);
+        $productData = $products->map(function ($product) {
+
+            $encryptedId = Crypt::encrypt($product->id);
+            $action = '';
+            $action .= '<a class="act-btn me-2 editProduct ms-2" data-id="'.$encryptedId.'" data-bs-toggle="tooltip" data-placement="top" title="'.__('admin.edit').'"><i class="fa-solid fa-edit" aria-hidden="true"></i></a>';
+            $action .= '<a href="javascript:void(0)" id="deleteProduct" class="act-btn del deleteProduct" data-id="'.$encryptedId.'" data-bs-toggle="tooltip" data-placement="top" title="'.__('admin.delete').'"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></a>';
+
+            return [
+                'name' => $product->name,
+                'category_name' => $product->category?->name ?? 'Uncategorized',
+                'description' => $product->description,
+                'price' => $product->price,
+                'stock_quantity' => $product->stock_quantity,
+                'image_path' => $product->image_path,
+                'image_url' => $this->productImagePreviewUrl($product->image_path),
+                'status' => $product->status,
+                'show_marketplace' => $product->show_marketplace,
+                'actions' => $action,
+            ];
+        });
 
         return response()->json([
             'draw' => $draw,
@@ -123,52 +119,160 @@ class ProductController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View|JsonResponse
     {
-        return view('admin.products.create', [
-            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
-            'product' => null,
-        ]);
+        return $this->productFormResponse($request, null);
     }
 
-    public function edit(Product $product): View
+    public function edit(Request $request): View|JsonResponse
     {
-        return view('admin.products.create', [
-            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
-            'product' => $product,
+        $validated = $request->validate([
+            'id' => ['required', 'string'],
         ]);
+
+        try {
+            $productId = Crypt::decrypt($validated['id']);
+        } catch (DecryptException) {
+            abort(404);
+        }
+
+        $product = Product::findOrFail($productId);
+
+        return $this->productFormResponse($request, $product);
     }
 
-    public function store(StoreProductRequest $request): RedirectResponse
+    public function store(StoreProductRequest $request): JsonResponse|RedirectResponse
     {
         $productData = $request->validated();
+        unset($productData['product_image']);
+
+        if ($request->hasFile('product_image')) {
+            $productData['image_path'] = $this->storeProductImage($request->file('product_image'));
+        }
+
         $productData['show_marketplace'] = $request->boolean('show_marketplace');
 
         Product::create($productData);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Product added successfully.',
+            ], 201);
+        }
 
         return redirect()
             ->route('admin.products.index')
             ->with('status', 'Product added successfully.');
     }
 
-    public function update(StoreProductRequest $request, Product $product): RedirectResponse
+    public function update(StoreProductRequest $request, Product $product): JsonResponse|RedirectResponse
     {
         $productData = $request->validated();
+        unset($productData['product_image']);
+
+        $previousImagePath = $product->image_path;
+        $newImagePath = null;
+
+        if ($request->hasFile('product_image')) {
+            $newImagePath = $this->storeProductImage($request->file('product_image'));
+            $productData['image_path'] = $newImagePath;
+        }
+
         $productData['show_marketplace'] = $request->boolean('show_marketplace');
 
         $product->update($productData);
+
+        if ($newImagePath !== null && $previousImagePath !== $newImagePath) {
+            $this->deleteReplacedProductImage($previousImagePath, $product);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Product updated successfully.',
+            ]);
+        }
 
         return redirect()
             ->route('admin.products.index')
             ->with('status', 'Product updated successfully.');
     }
 
-    public function destroy(Product $product): RedirectResponse
+    public function destroy(Request $request)
     {
+        $product = Product::findOrFail(Crypt::decrypt($request->id));
         $product->delete();
 
-        return redirect()
-            ->route('admin.products.index')
-            ->with('status', 'Product deleted successfully.');
+        return response()->json(['success' => true, 'message' => 'Product Deleted Successfully.']);
+    }
+
+    private function productFormResponse(Request $request, ?Product $product): View|JsonResponse
+    {
+        $viewData = [
+            'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'product' => $product,
+            'imagePreviewUrl' => $this->productImagePreviewUrl($product?->image_path),
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'title' => $product ? 'Edit Product' : 'Add Product',
+                'html' => view('admin.products._form', [...$viewData, 'isModal' => true])->render(),
+            ]);
+        }
+
+        return view('admin.products.create', $viewData);
+    }
+
+    private function storeProductImage(UploadedFile $image): string
+    {
+        $imagePath = $image->store('products', 'public');
+
+        if (! is_string($imagePath)) {
+            throw new RuntimeException('Unable to store the uploaded product image.');
+        }
+
+        return $imagePath;
+    }
+
+    private function deleteReplacedProductImage(?string $imagePath, Product $product): void
+    {
+        if ($imagePath === null || ! Str::startsWith($imagePath, 'products/')) {
+            return;
+        }
+
+        if (
+            Storage::disk('public')->exists($imagePath)
+            && ! Storage::disk('public')->delete($imagePath)
+        ) {
+            Log::warning('Unable to remove the replaced product image.', [
+                'product_id' => $product->id,
+                'image_path' => $imagePath,
+            ]);
+        }
+    }
+
+    private function productImagePreviewUrl(?string $imagePath): ?string
+    {
+        if ($imagePath === null || trim($imagePath) === '') {
+            return null;
+        }
+
+        if (Str::startsWith($imagePath, ['http://', 'https://'])) {
+            return $imagePath;
+        }
+
+        $relativePath = ltrim($imagePath, '/');
+
+        if (Storage::disk('public')->exists($relativePath)) {
+            return Storage::disk('public')->url($relativePath);
+        }
+
+        if (is_file(public_path($relativePath))) {
+            return asset($relativePath);
+        }
+
+        return null;
     }
 }

@@ -10,6 +10,11 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('assets/css/admin.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+      crossorigin="anonymous">
     @stack('styles')
 </head>
 
@@ -118,7 +123,13 @@
         <p>&copy; {{ date('Y') }} Mahalakshmi. All rights reserved.</p>
     </footer>
 
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ asset('assets/js/snippetapp.js') }}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB"
+      crossorigin="anonymous">
     @stack('scripts')
     <script>
         const profileDropdown = document.querySelector('.admin-profile-dropdown');
@@ -142,6 +153,88 @@
 
             toast.querySelector('[data-toast-dismiss]')?.addEventListener('click', dismissToast);
             window.setTimeout(dismissToast, 5000);
+        });
+
+        document.addEventListener('change', (event) => {
+            const input = event.target;
+
+            if (!(input instanceof HTMLInputElement) || input.id !== 'product_image') {
+                return;
+            }
+
+            const preview = document.getElementById('product-image-preview');
+            const emptyPreview = document.getElementById('product-image-preview-empty');
+            const fileName = document.getElementById('product-image-file-name');
+            const fileNameText = fileName?.querySelector('.admin-product-file-name-text');
+            const newFileLabel = fileName?.querySelector('.admin-product-file-new');
+            const removeFileButton = fileName?.querySelector('.admin-product-file-remove');
+
+            if (!preview || !emptyPreview || !fileName || !fileNameText || !newFileLabel || !removeFileButton) {
+                return;
+            }
+
+            if (preview.dataset.objectUrl) {
+                URL.revokeObjectURL(preview.dataset.objectUrl);
+                delete preview.dataset.objectUrl;
+            }
+
+            const image = input.files?.[0];
+            fileNameText.textContent = image?.name || fileName.dataset.initialFileName || '';
+            newFileLabel.hidden = !image;
+            removeFileButton.hidden = !image;
+            fileName.hidden = !image && !fileName.dataset.initialFileName;
+
+            if (!image) {
+                const initialImage = preview.dataset.initialSrc;
+                preview.hidden = !initialImage;
+                emptyPreview.hidden = Boolean(initialImage);
+
+                if (initialImage) {
+                    preview.src = initialImage;
+                } else {
+                    preview.removeAttribute('src');
+                }
+
+                return;
+            }
+
+            const previewUrl = URL.createObjectURL(image);
+            preview.dataset.objectUrl = previewUrl;
+            preview.onload = () => {
+                URL.revokeObjectURL(previewUrl);
+                delete preview.dataset.objectUrl;
+            };
+            preview.onerror = () => {
+                URL.revokeObjectURL(previewUrl);
+                delete preview.dataset.objectUrl;
+                preview.hidden = true;
+                emptyPreview.hidden = false;
+                snippetapp.toast.error('Preview unavailable', 'Unable to preview the selected image.');
+            };
+            preview.src = previewUrl;
+            preview.hidden = false;
+            emptyPreview.hidden = true;
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+
+            const removeFileButton = event.target.closest('.admin-product-file-remove');
+
+            if (!removeFileButton) {
+                return;
+            }
+
+            const fileInput = document.getElementById('product_image');
+
+            if (!(fileInput instanceof HTMLInputElement)) {
+                return;
+            }
+
+            fileInput.value = '';
+            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
         });
 
         document.addEventListener('submit', async (event) => {

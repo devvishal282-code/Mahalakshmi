@@ -2,22 +2,25 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable([
-    'category_id',
-    'name',
-    'description',
-    'price',
-    'stock_quantity',
-    'image_path',
-    'status',
-    'show_marketplace',
-])]
 class Product extends Model
 {
+    use SoftDeletes;
+
+    protected $fillable = [
+        'category_id',
+        'name',
+        'description',
+        'price',
+        'stock_quantity',
+        'image_path',
+        'status',
+        'show_marketplace',
+    ];
+
     protected function casts(): array
     {
         return [

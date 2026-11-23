@@ -4,6 +4,9 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -20,7 +23,7 @@ it('forbids authenticated non-admins from product management', function () {
         ->assertForbidden();
 });
 
-it('renders the product list and add product link for admins', function () {
+it('renders the product list and add product button for admins', function () {
     $admin = User::factory()->create();
     $admin->forceFill(['is_admin' => true])->save();
 
@@ -29,8 +32,12 @@ it('renders the product list and add product link for admins', function () {
         ->assertOk()
         ->assertSee('Products')
         ->assertSee('Add Product')
+        ->assertSee('data-product-modal-open', false)
+        ->assertSee('<dialog id="product-modal"', false)
         ->assertSee('No data found')
         ->assertSee('products-table')
+        ->assertSee('<th>Image</th>', false)
+        ->assertSee('admin-product-table-image', false)
         ->assertSee("$('#products-table').DataTable", false)
         ->assertSee('Please wait, loading products...')
         ->assertSee('sweetalert2@11', false)
@@ -44,13 +51,46 @@ it('renders the product list and add product link for admins', function () {
         ->assertSee('No category')
         ->assertSee('type="radio"', false)
         ->assertSee('value="draft" required checked', false)
-        ->assertSee('role="switch"', false);
+        ->assertSee('role="switch"', false)
+        ->assertSee('name="product_image"', false)
+        ->assertSee('admin-product-file-picker-button', false)
+        ->assertSee('product-image-file-name', false)
+        ->assertSee('admin-product-file-new', false)
+        ->assertSee('admin-product-file-remove', false)
+        ->assertSee('id="product-image-preview"', false)
+        ->assertDontSee('name="image_path"', false);
+});
+
+it('returns the add product modal form as JSON', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_admin' => true])->save();
+    Category::create(['name' => 'Festive Wear']);
+
+    $this->actingAs($admin)
+        ->getJson(route('admin.products.create'))
+        ->assertOk()
+        ->assertJsonPath('title', 'Add Product')
+        ->assertJsonPath('html', fn (string $html): bool => str_contains($html, 'id="product-form"')
+            && str_contains($html, route('admin.products.store'))
+            && str_contains($html, 'Festive Wear')
+            && str_contains($html, 'data-product-modal-close')
+            && str_contains($html, 'name="product_image"')
+            && str_contains($html, 'admin-product-file-picker-button')
+            && str_contains($html, 'product-image-file-name')
+            && str_contains($html, 'admin-product-file-new')
+            && str_contains($html, 'admin-product-file-remove')
+            && str_contains($html, 'id="product-image-preview"')
+            && str_contains($html, 'admin-product-form-content')
+            && str_contains($html, 'admin-product-form-actions')
+            && ! str_contains($html, 'name="image_path"'));
 });
 
 it('returns products through the server-side DataTables endpoint', function () {
+    Storage::fake('public');
     $admin = User::factory()->create();
     $admin->forceFill(['is_admin' => true])->save();
     $category = Category::create(['name' => 'Festive Wear']);
+    Storage::disk('public')->put('products/silk-kurta.jpg', 'image content');
     Product::create([
         'category_id' => $category->id,
         'name' => 'Silk Kurta',
@@ -75,11 +115,12 @@ it('returns products through the server-side DataTables endpoint', function () {
         ->assertJsonPath('data.0.category_name', 'Festive Wear')
         ->assertJsonPath('data.0.description', 'Festive wear style')
         ->assertJsonPath('data.0.image_path', 'products/silk-kurta.jpg')
+        ->assertJsonPath('data.0.image_url', Storage::disk('public')->url('products/silk-kurta.jpg'))
         ->assertJsonPath('data.0.show_marketplace', true)
-        ->assertJsonPath('data.0.actions', fn (string $actions): bool => str_contains($actions, 'admin-product-edit-button')
-            && str_contains($actions, 'admin-product-delete-button')
-            && str_contains($actions, 'data-swal-confirm=')
-            && str_contains($actions, '<svg'));
+        ->assertJsonPath('data.0.actions', fn (string $actions): bool => str_contains($actions, 'editProduct')
+            && str_contains($actions, 'deleteProduct')
+            && str_contains($actions, 'fa-solid fa-edit')
+            && str_contains($actions, 'fa-solid fa-trash-can'));
 });
 
 it('updates a product from the edit form', function () {
@@ -93,12 +134,12 @@ it('updates a product from the edit form', function () {
     ]);
 
     $this->actingAs($admin)
-        ->get(route('admin.products.edit', $product))
+        ->getJson(route('admin.products.edit', ['id' => Crypt::encrypt($product->id)]))
         ->assertOk()
-        ->assertSee('Edit Product')
-        ->assertSee('Old Kurta')
-        ->assertSee('value="draft" required checked', false)
-        ->assertSee('Update Product');
+        ->assertJsonPath('title', 'Edit Product')
+        ->assertJsonPath('html', fn (string $html): bool => str_contains($html, 'Old Kurta')
+            && str_contains($html, 'value="draft" required checked')
+            && str_contains($html, route('admin.products.update', $product)));
 
     $this->followingRedirects()
         ->put(route('admin.products.update', $product), [
@@ -121,6 +162,15 @@ it('updates a product from the edit form', function () {
     ]);
 });
 
+it('does not open a product edit form with an invalid encrypted identifier', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_admin' => true])->save();
+
+    $this->actingAs($admin)
+        ->getJson(route('admin.products.edit', ['id' => 'invalid']))
+        ->assertNotFound();
+});
+
 it('deletes a product from its listing action', function () {
     $admin = User::factory()->create();
     $admin->forceFill(['is_admin' => true])->save();
@@ -132,9 +182,12 @@ it('deletes a product from its listing action', function () {
     ]);
 
     $this->actingAs($admin)
-        ->delete(route('admin.products.destroy', $product))
-        ->assertRedirect(route('admin.products.index'))
-        ->assertSessionHas('status', 'Product deleted successfully.');
+        ->deleteJson(route('admin.products.destroy'), [
+            'id' => Crypt::encrypt($product->id),
+        ])
+        ->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('message', 'Product Deleted Successfully.');
 
     $this->assertDatabaseMissing('products', ['id' => $product->id]);
 });
@@ -256,6 +309,175 @@ it('rejects a product with a category that does not exist', function () {
         ])
         ->assertRedirect(route('admin.products.create'))
         ->assertSessionHasErrors('category_id');
+
+    $this->assertDatabaseCount('products', 0);
+});
+
+it('creates and updates products with AJAX JSON responses', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_admin' => true])->save();
+
+    $this->actingAs($admin)
+        ->postJson(route('admin.products.store'), [
+            'name' => 'AJAX Kurta',
+            'price' => '899.00',
+            'stock_quantity' => 6,
+            'status' => 'draft',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('message', 'Product added successfully.');
+
+    $product = Product::query()->where('name', 'AJAX Kurta')->firstOrFail();
+
+    $this->putJson(route('admin.products.update', $product), [
+        'name' => 'Updated AJAX Kurta',
+        'price' => '999.00',
+        'stock_quantity' => 8,
+        'status' => 'active',
+    ])
+        ->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('message', 'Product updated successfully.');
+
+    $this->assertDatabaseHas('products', [
+        'id' => $product->id,
+        'name' => 'Updated AJAX Kurta',
+        'price' => '999.00',
+        'stock_quantity' => 8,
+    ]);
+});
+
+it('stores uploaded product images and replaces the previous image on update', function () {
+    Storage::fake('public');
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_admin' => true])->save();
+
+    $this->actingAs($admin)
+        ->post(route('admin.products.store'), [
+            'name' => 'Image Kurta',
+            'price' => '899.00',
+            'stock_quantity' => 6,
+            'status' => 'draft',
+            'product_image' => UploadedFile::fake()->image('kurta.png'),
+        ], ['Accept' => 'application/json'])
+        ->assertCreated()
+        ->assertJsonPath('success', true);
+
+    $product = Product::query()->where('name', 'Image Kurta')->firstOrFail();
+    $firstImagePath = $product->image_path;
+
+    expect(str_starts_with($firstImagePath, 'products/'))->toBeTrue();
+    Storage::disk('public')->assertExists($firstImagePath);
+
+    $editResponse = $this->getJson(route('admin.products.edit', [
+        'id' => Crypt::encrypt($product->id),
+    ]))->assertOk();
+
+    $editResponse->assertJsonPath('html', fn (string $html): bool => str_contains($html, 'name="product_image"')
+        && str_contains($html, Storage::disk('public')->url($firstImagePath)));
+
+    $this->post(route('admin.products.update', $product), [
+        '_method' => 'PUT',
+        'name' => 'Image Kurta',
+        'price' => '899.00',
+        'stock_quantity' => 6,
+        'status' => 'draft',
+        'product_image' => UploadedFile::fake()->image('replacement.webp'),
+    ], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('success', true);
+
+    $product->refresh();
+    expect($product->image_path)->not->toBe($firstImagePath);
+    Storage::disk('public')->assertExists($product->image_path);
+    Storage::disk('public')->assertMissing($firstImagePath);
+});
+
+it('keeps the existing image when a product is updated without a replacement file', function () {
+    Storage::fake('public');
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_admin' => true])->save();
+    $imagePath = UploadedFile::fake()->image('existing.png')->store('products', 'public');
+    $product = Product::create([
+        'name' => 'Existing Image Kurta',
+        'price' => '899.00',
+        'stock_quantity' => 6,
+        'image_path' => $imagePath,
+        'status' => 'draft',
+    ]);
+
+    $this->actingAs($admin)
+        ->putJson(route('admin.products.update', $product), [
+            'name' => 'Updated Existing Image Kurta',
+            'price' => '999.00',
+            'stock_quantity' => 8,
+            'status' => 'active',
+        ])
+        ->assertOk()
+        ->assertJsonPath('success', true);
+
+    $this->assertDatabaseHas('products', [
+        'id' => $product->id,
+        'name' => 'Updated Existing Image Kurta',
+        'image_path' => $imagePath,
+    ]);
+    Storage::disk('public')->assertExists($imagePath);
+});
+
+it('rejects non-image product uploads', function () {
+    Storage::fake('public');
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_admin' => true])->save();
+
+    $this->actingAs($admin)
+        ->post(route('admin.products.store'), [
+            'name' => 'Invalid Image Kurta',
+            'price' => '899.00',
+            'stock_quantity' => 6,
+            'status' => 'draft',
+            'product_image' => UploadedFile::fake()->create('notes.txt', 10, 'text/plain'),
+        ], ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('product_image');
+
+    $this->assertDatabaseCount('products', 0);
+    expect(Storage::disk('public')->allFiles())->toBeEmpty();
+});
+
+it('rejects product images larger than 2 MB', function () {
+    Storage::fake('public');
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_admin' => true])->save();
+
+    $this->actingAs($admin)
+        ->post(route('admin.products.store'), [
+            'name' => 'Oversized Image Kurta',
+            'price' => '899.00',
+            'stock_quantity' => 6,
+            'status' => 'draft',
+            'product_image' => UploadedFile::fake()->image('oversized.png')->size(2049),
+        ], ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('product_image');
+
+    $this->assertDatabaseCount('products', 0);
+    expect(Storage::disk('public')->allFiles())->toBeEmpty();
+});
+
+it('returns validation errors as JSON when AJAX product data is invalid', function () {
+    $admin = User::factory()->create();
+    $admin->forceFill(['is_admin' => true])->save();
+
+    $this->actingAs($admin)
+        ->postJson(route('admin.products.store'), [
+            'name' => '',
+            'price' => '499.00',
+            'stock_quantity' => 1,
+            'status' => 'draft',
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('name');
 
     $this->assertDatabaseCount('products', 0);
 });

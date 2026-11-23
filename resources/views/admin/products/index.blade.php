@@ -14,7 +14,12 @@
                 <h1>Products</h1>
                 <p class="admin-dashboard-description">View and manage the products in your store.</p>
             </div>
-            <a class="admin-product-add-button" href="{{ route('admin.products.create') }}">Add Product</a>
+            <button
+                class="admin-product-add-button"
+                type="button"
+                data-product-modal-open
+                data-url="{{ route('admin.products.create') }}"
+            >Add Product</button>
         </div>
 
         <div class="admin-product-table-card">
@@ -27,7 +32,7 @@
                             <th>Description</th>
                             <th>Price</th>
                             <th>Stock</th>
-                            <th>Image Path</th>
+                            <th>Image</th>
                             <th>Status</th>
                             <th>Marketplace</th>
                             <th>Action</th>
@@ -38,10 +43,21 @@
             </div>
         </div>
     </section>
+
+    <dialog id="product-modal" class="admin-product-modal" aria-labelledby="product-modal-title">
+        <div class="admin-product-modal-panel">
+            <div class="admin-product-modal-header">
+                <h2 id="product-modal-title">Product</h2>
+                <button class="admin-product-modal-close" type="button" data-product-modal-close aria-label="Close">&times;</button>
+            </div>
+            <div id="product-modal-body">
+                <p class="admin-product-modal-loading">Loading product form...</p>
+            </div>
+        </div>
+    </dialog>
 @endsection
 
 @push('scripts')
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.2/js/dataTables.min.js"></script>
     <script>
         
@@ -96,10 +112,33 @@
                     name: 'stock_quantity'
                 },
                 {
-                    data: 'image_path',
+                    data: 'image_url',
                     name: 'image_path',
-                    defaultContent: '',
-                    render: $.fn.dataTable.render.text()
+                    orderable: false,
+                    searchable: false,
+                    render: function (value, type, row) {
+                        if (type !== 'display') {
+                            return value || '';
+                        }
+
+                        if (!value) {
+                            return '—';
+                        }
+
+                        var imageUrl = new URL(value, window.location.href);
+
+                        if (!['http:', 'https:'].includes(imageUrl.protocol)) {
+                            return '—';
+                        }
+
+                        var image = document.createElement('img');
+                        image.className = 'admin-product-table-image';
+                        image.src = imageUrl.href;
+                        image.alt = (row.name || 'Product') + ' image';
+                        image.loading = 'lazy';
+
+                        return image;
+                    }
                 },
                 {
                     data: 'status',
@@ -140,6 +179,127 @@
     }
 
 
-        $(document).ready(initProductsTable);
+        $(document).ready(function(){
+            initProductsTable();
+
+            var productModal = document.getElementById('product-modal');
+            var productModalBody = $('#product-modal-body');
+
+            function loadProductForm(url, data) {
+                productModalBody.html('<p class="admin-product-modal-loading">Loading product form...</p>');
+                productModal.showModal();
+
+                $.ajax({
+                    url: url,
+                    method: 'GET',
+                    data: data || {},
+                    dataType: 'json',
+                    headers: {
+                        Accept: 'application/json'
+                    },
+                    success: function(response) {
+                        $('#product-modal-title').text(response.title);
+                        productModalBody.html(response.html);
+                    },
+                    error: function(xhr) {
+                        productModalBody.html('<p class="admin-product-modal-loading">Unable to load the product form.</p>');
+                        snippetapp.toast.error(
+                            'Error',
+                            xhr.responseJSON?.message || 'Unable to load the product form.'
+                        );
+                    }
+                });
+            }
+
+            $(document).on('click', '[data-product-modal-open]', function() {
+                loadProductForm($(this).data('url'));
+            });
+
+            $(document).on('click', '.editProduct', function(event) {
+                event.preventDefault();
+                loadProductForm(@json(route('admin.products.edit')), {
+                    id: $(this).data('id')
+                });
+            });
+
+            $(document).on('click', '[data-product-modal-close]', function() {
+                productModal.close();
+            });
+
+            productModal.addEventListener('click', function(event) {
+                if (event.target === productModal) {
+                    productModal.close();
+                }
+            });
+
+            $(document).on('submit', '#product-form', function(event) {
+                event.preventDefault();
+
+                var form = this;
+                var submitButton = $(form).find('button[type="submit"]');
+                submitButton.prop('disabled', true);
+
+                $.ajax({
+                    url: form.action,
+                    method: 'POST',
+                    data: new FormData(form),
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json',
+                    headers: {
+                        Accept: 'application/json'
+                    },
+                    success: function(response) {
+                        snippetapp.toast.success('Success', response.message);
+                        productModal.close();
+                        $('#products-table').DataTable().ajax.reload(null, false);
+                    },
+                    error: function(xhr) {
+                        if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                            var validationMessages = Object.values(xhr.responseJSON.errors).flat();
+                            snippetapp.toast.warning('Please check the form', validationMessages.join(' '));
+                            return;
+                        }
+
+                        snippetapp.toast.error(
+                            'Error',
+                            xhr.responseJSON?.message || 'Unable to save the product.'
+                        );
+                    },
+                    complete: function() {
+                        submitButton.prop('disabled', false);
+                    }
+                });
+            });
+
+            $(document).on('click', '.deleteProduct', function(){
+                var productId = $(this).attr('data-id');
+
+                snippetapp.swal.question('Are you sure?', 'You want to delete this product.').then(function (result) {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: "{{ route('admin.products.destroy') }}",
+                            method: 'DELETE',
+                            data:{
+                                id: productId,
+                                _token: @json(csrf_token())
+                            },
+                            success: function(response){
+                                if(response.success){
+                                    snippetapp.toast.success(response.message);
+                                    $('#products-table').DataTable().ajax.reload(null, false);
+                                } else {
+                                    snippetapp.toast.warning(response.message);
+                                }
+                            },
+                            error: function() {
+                                snippetapp.toast.error("Something Want Wrong.");
+                            }
+                        });
+                    }
+                });
+
+            });
+        });
     </script>
 @endpush
