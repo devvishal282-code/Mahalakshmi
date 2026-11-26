@@ -32,12 +32,20 @@
             </div>
 
             @if ($product->images->isNotEmpty())
-                <div class="product-detail-thumbnails" aria-label="Product images">
-                    @foreach ($product->images as $image)
-                        <button type="button" class="product-detail-thumbnail{{ $image->id === $primaryImage?->id ? ' is-active' : '' }}" data-gallery-thumbnail data-image-src="{{ $image->url() }}" data-image-alt="{{ $product->name }} image {{ $loop->iteration }}" aria-label="Show image {{ $loop->iteration }}" aria-pressed="{{ $image->id === $primaryImage?->id ? 'true' : 'false' }}">
-                            <img src="{{ $image->url() }}" alt="">
-                        </button>
-                    @endforeach
+                <div class="product-thumbnail-slider{{ $product->images->count() === 1 ? ' product-thumbnail-slider--single' : '' }}" data-thumbnail-slider>
+                    @if ($product->images->count() > 1)
+                        <button type="button" class="product-thumbnail-slider-arrow" data-thumbnail-previous aria-label="Scroll thumbnails left"><i class="fa-solid fa-chevron-left"></i></button>
+                    @endif
+                    <div class="product-detail-thumbnails" data-thumbnail-viewport aria-label="Product images">
+                        @foreach ($product->images as $image)
+                            <button type="button" class="product-detail-thumbnail{{ $image->id === $primaryImage?->id ? ' is-active' : '' }}" data-gallery-thumbnail data-image-src="{{ $image->url() }}" data-image-alt="{{ $product->name }} image {{ $loop->iteration }}" aria-label="Show image {{ $loop->iteration }}" aria-pressed="{{ $image->id === $primaryImage?->id ? 'true' : 'false' }}">
+                                <img src="{{ $image->url() }}" alt="">
+                            </button>
+                        @endforeach
+                    </div>
+                    @if ($product->images->count() > 1)
+                        <button type="button" class="product-thumbnail-slider-arrow" data-thumbnail-next aria-label="Scroll thumbnails right"><i class="fa-solid fa-chevron-right"></i></button>
+                    @endif
                 </div>
             @endif
         </div>

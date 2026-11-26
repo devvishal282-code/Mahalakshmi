@@ -1915,15 +1915,58 @@ footer div a {
 .product-gallery-arrow--previous { left: 16px; }
 .product-gallery-arrow--next { right: 16px; }
 
+.product-thumbnail-slider {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.product-thumbnail-slider--single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .product-detail-thumbnails {
     display: grid;
     grid-auto-columns: 82px;
     grid-auto-flow: column;
     justify-content: start;
     gap: 10px;
-    margin-top: 14px;
     overflow-x: auto;
     padding-bottom: 5px;
+    scroll-behavior: smooth;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    touch-action: pan-x;
+}
+
+.product-detail-thumbnails::-webkit-scrollbar {
+    display: none;
+}
+
+.product-thumbnail-slider-arrow {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    place-items: center;
+    padding: 0;
+    border: 1px solid #d9c9ae;
+    border-radius: 50%;
+    background: #fffdf7;
+    color: var(--wine);
+    cursor: pointer;
+    transition: opacity 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.product-thumbnail-slider-arrow:hover:not(:disabled) {
+    border-color: var(--wine);
+    background: #fff4e2;
+}
+
+.product-thumbnail-slider-arrow:disabled {
+    opacity: 0.35;
+    cursor: default;
 }
 
 .product-detail-thumbnail {
@@ -1933,6 +1976,7 @@ footer div a {
     border-radius: 3px;
     background: transparent;
     cursor: pointer;
+    scroll-snap-align: center;
 }
 
 .product-detail-thumbnail.is-active {
@@ -2115,4 +2159,7 @@ footer div a {
     .product-detail-services { grid-template-columns: 1fr; }
     .product-detail-facts div { grid-template-columns: 96px 1fr; }
     .product-related { padding-top: 65px; }
+    .product-detail-thumbnails { grid-auto-columns: 68px; }
+    .product-detail-thumbnail { width: 68px; }
+    .product-thumbnail-slider-arrow { width: 30px; height: 30px; }
 }

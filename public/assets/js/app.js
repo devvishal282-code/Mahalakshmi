@@ -48,8 +48,34 @@ if (strip) {
 document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
   const mainImage = gallery.querySelector('[data-product-main-image]');
   const thumbnails = Array.from(gallery.querySelectorAll('[data-gallery-thumbnail]'));
+  const thumbnailViewport = gallery.querySelector('[data-thumbnail-viewport]');
+  const thumbnailPrevious = gallery.querySelector('[data-thumbnail-previous]');
+  const thumbnailNext = gallery.querySelector('[data-thumbnail-next]');
   let activeIndex = Math.max(0, thumbnails.findIndex((thumbnail) => thumbnail.classList.contains('is-active')));
   let transitionTimer;
+
+  const updateThumbnailControls = () => {
+    if (!thumbnailViewport) {
+      return;
+    }
+
+    const maximumScroll = thumbnailViewport.scrollWidth - thumbnailViewport.clientWidth;
+    if (thumbnailPrevious) {
+      thumbnailPrevious.disabled = thumbnailViewport.scrollLeft <= 2;
+    }
+    if (thumbnailNext) {
+      thumbnailNext.disabled = maximumScroll <= 2 || thumbnailViewport.scrollLeft >= maximumScroll - 2;
+    }
+  };
+
+  const scrollThumbnailSlider = (direction) => {
+    if (!thumbnailViewport) {
+      return;
+    }
+
+    const thumbnailWidth = thumbnails[0]?.getBoundingClientRect().width || 82;
+    thumbnailViewport.scrollBy({ left: direction * (thumbnailWidth + 10) * 3, behavior: 'smooth' });
+  };
 
   const showImage = (index) => {
     if (!mainImage || thumbnails.length === 0) {
@@ -63,7 +89,12 @@ document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
     mainImage.src = activeThumbnail.dataset.imageSrc;
     mainImage.alt = activeThumbnail.dataset.imageAlt;
     transitionTimer = window.setTimeout(() => mainImage.classList.remove('is-changing'), 180);
-    activeThumbnail.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    if (thumbnailViewport) {
+      thumbnailViewport.scrollTo({
+        left: activeThumbnail.offsetLeft - (thumbnailViewport.clientWidth - activeThumbnail.clientWidth) / 2,
+        behavior: 'smooth'
+      });
+    }
 
     thumbnails.forEach((thumbnail, thumbnailIndex) => {
       const isActive = thumbnailIndex === activeIndex;
@@ -77,6 +108,10 @@ document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
   });
   gallery.querySelector('[data-gallery-previous]')?.addEventListener('click', () => showImage(activeIndex - 1));
   gallery.querySelector('[data-gallery-next]')?.addEventListener('click', () => showImage(activeIndex + 1));
+  thumbnailPrevious?.addEventListener('click', () => scrollThumbnailSlider(-1));
+  thumbnailNext?.addEventListener('click', () => scrollThumbnailSlider(1));
+  thumbnailViewport?.addEventListener('scroll', updateThumbnailControls, { passive: true });
+  window.addEventListener('resize', updateThumbnailControls, { passive: true });
   gallery.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
@@ -88,6 +123,7 @@ document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
       showImage(activeIndex + 1);
     }
   });
+  updateThumbnailControls();
 });
 
 const wishlistStorageKey = 'mahalakshmi-wishlist';
