@@ -22,7 +22,7 @@
     </nav>
 
     <section class="product-detail wrap" aria-labelledby="product-title">
-        <div class="product-detail-gallery" data-product-gallery>
+        <div class="product-detail-gallery" data-product-gallery tabindex="0" aria-label="Product image gallery. Use left and right arrow keys to browse images.">
             <div class="product-detail-main-image">
                 <img src="{{ $mainImageUrl }}" alt="{{ $product->name }}" data-product-main-image>
                 @if ($product->images->count() > 1)
@@ -42,7 +42,7 @@
             @endif
         </div>
 
-        <div class="product-detail-summary" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}" data-product-image="{{ $mainImageUrl }}">
+        <div class="product-detail-summary" data-product-id="{{ $product->getRouteKey() }}" data-product-name="{{ $product->name }}" data-product-image="{{ $mainImageUrl }}">
             <p class="product-detail-kicker">{{ $product->collections->first()?->title ?? 'Mahalakshmi Collection' }}</p>
             <h1 id="product-title">{{ $product->name }}</h1>
             <div class="product-detail-meta">
@@ -72,7 +72,7 @@
                 </details>
                 <details>
                     <summary>Product information</summary>
-                    <p>Product code: ML-{{ str_pad((string) $product->id, 5, '0', STR_PAD_LEFT) }}. Category: {{ $product->category?->name ?? 'Mahalakshmi collection' }}.</p>
+                    <p>Product code: ML-{{ strtoupper(substr(hash_hmac('sha256', (string) $product->id, config('app.key')), 0, 8)) }}. Category: {{ $product->category?->name ?? 'Mahalakshmi collection' }}.</p>
                 </details>
                 <details>
                     <summary>Returns and exchanges</summary>

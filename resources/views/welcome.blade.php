@@ -86,7 +86,7 @@
         <div class="category-links" aria-label="Product categories">
             <a href="#all" class="active" aria-selected="true" role="tab">All</a>
             @foreach ($categories as $category)
-                <a href="#category-{{ $category->id }}" aria-selected="false" role="tab">{{ $category->name }}</a>
+                <a href="#category-{{ $category->getRouteKey() }}" aria-selected="false" role="tab">{{ $category->name }}</a>
             @endforeach
         </div>
 
@@ -102,7 +102,7 @@
             </div>
 
             @foreach ($categories as $category)
-                <div class="tab-pane fade" id="category-{{ $category->id }}" role="tabpanel">
+                <div class="tab-pane fade" id="category-{{ $category->getRouteKey() }}" role="tabpanel">
                 <div class="product-grid">
                     @foreach ($products->where('category_id', $category->id) as $product)
                         @include('partials.product-card', ['product' => $product])

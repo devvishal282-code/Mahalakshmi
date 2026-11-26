@@ -5,7 +5,7 @@
     $whatsAppUrl = 'https://wa.me/919825572454?text='.rawurlencode('Hello, I would like to know more about '.$product->name.'. '.$productUrl);
 @endphp
 
-<article class="product-card" data-category-id="{{ $product->category_id }}" data-product-id="{{ $product->id }}">
+<article class="product-card" data-category-id="{{ $product->category?->getRouteKey() }}" data-product-id="{{ $product->getRouteKey() }}">
     <div class="product-image">
         <a href="{{ $productUrl }}" aria-label="View {{ $product->name }}">
             <img src="{{ $imageUrl }}" alt="{{ $product->name }}" onerror="this.onerror=null;this.src='{{ $fallbackImage }}';">

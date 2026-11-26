@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasEncodedRouteKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Collection extends Model
 {
+    use HasEncodedRouteKey;
+
     protected $fillable = [
         'title',
         'slug',

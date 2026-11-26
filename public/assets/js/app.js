@@ -49,6 +49,7 @@ document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
   const mainImage = gallery.querySelector('[data-product-main-image]');
   const thumbnails = Array.from(gallery.querySelectorAll('[data-gallery-thumbnail]'));
   let activeIndex = Math.max(0, thumbnails.findIndex((thumbnail) => thumbnail.classList.contains('is-active')));
+  let transitionTimer;
 
   const showImage = (index) => {
     if (!mainImage || thumbnails.length === 0) {
@@ -57,8 +58,12 @@ document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
 
     activeIndex = (index + thumbnails.length) % thumbnails.length;
     const activeThumbnail = thumbnails[activeIndex];
+    window.clearTimeout(transitionTimer);
+    mainImage.classList.add('is-changing');
     mainImage.src = activeThumbnail.dataset.imageSrc;
     mainImage.alt = activeThumbnail.dataset.imageAlt;
+    transitionTimer = window.setTimeout(() => mainImage.classList.remove('is-changing'), 180);
+    activeThumbnail.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
 
     thumbnails.forEach((thumbnail, thumbnailIndex) => {
       const isActive = thumbnailIndex === activeIndex;
@@ -72,6 +77,17 @@ document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
   });
   gallery.querySelector('[data-gallery-previous]')?.addEventListener('click', () => showImage(activeIndex - 1));
   gallery.querySelector('[data-gallery-next]')?.addEventListener('click', () => showImage(activeIndex + 1));
+  gallery.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      showImage(activeIndex - 1);
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      showImage(activeIndex + 1);
+    }
+  });
 });
 
 const wishlistStorageKey = 'mahalakshmi-wishlist';
