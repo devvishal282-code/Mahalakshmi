@@ -1122,6 +1122,112 @@
     display: none;
 }
 
+.admin-product-collections-select + .select2-container .select2-selection--multiple {
+    min-height: 42px;
+    border-color: #d5e5d9;
+    border-radius: 6px;
+    padding: 3px 5px;
+}
+
+.admin-product-collections-select + .select2-container.select2-container--focus .select2-selection--multiple {
+    border-color: #008f49;
+    box-shadow: 0 0 0 2px rgba(0, 143, 73, 0.14);
+}
+
+.admin-product-collections-select + .select2-container .select2-selection__choice {
+    border: 0;
+    background: #e8f7ed;
+    color: #174a2b;
+}
+
+.select2-container--open {
+    z-index: 10050;
+}
+
+.admin-product-image-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 14px;
+    min-height: 170px;
+    padding: 14px;
+    border: 1px dashed #c9ddcd;
+    border-radius: 8px;
+    background: #f7fbf8;
+}
+
+.admin-product-image-card {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid #d5e5d9;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.admin-product-image-card img {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    border-radius: 5px;
+    object-fit: cover;
+}
+
+.admin-product-image-card small {
+    overflow: hidden;
+    color: #64746a;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-product-primary-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #34493b;
+    cursor: pointer;
+}
+
+.admin-product-primary-choice input {
+    width: 16px;
+    min-height: 16px;
+    margin: 0;
+    accent-color: #008f49;
+}
+
+.admin-product-image-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(64, 17, 27, 0.88);
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.admin-product-image-gallery-empty {
+    grid-column: 1 / -1;
+    align-self: center;
+    margin: 0;
+    color: #64746a;
+    font-size: 13px;
+    text-align: center;
+}
+
+.admin-product-image-gallery-empty[hidden] {
+    display: none;
+}
+
 .admin-collection-image-picker {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(180px, 0.8fr);

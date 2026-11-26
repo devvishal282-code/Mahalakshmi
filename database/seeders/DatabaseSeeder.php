@@ -45,7 +45,7 @@ class DatabaseSeeder extends Seeder
                 'description' => 'A soft floral co-ord set for celebrations and evenings out.',
                 'price' => 1899,
                 'stock_quantity' => 12,
-                'image_path' => 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=700&q=85',
+                'image_path' => null,
             ],
             [
                 'category' => 'Co-ord Sets',
@@ -53,7 +53,7 @@ class DatabaseSeeder extends Seeder
                 'description' => 'An easy ivory set with delicate botanical detailing.',
                 'price' => 1799,
                 'stock_quantity' => 9,
-                'image_path' => 'https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&w=700&q=85',
+                'image_path' => null,
             ],
             [
                 'category' => 'Festive Wear',
@@ -61,7 +61,7 @@ class DatabaseSeeder extends Seeder
                 'description' => 'A graceful festive suit in a rich lavender shade.',
                 'price' => 2499,
                 'stock_quantity' => 8,
-                'image_path' => 'https://images.unsplash.com/photo-1585488434455-71d9f9322d7c?auto=format&fit=crop&w=700&q=85',
+                'image_path' => null,
             ],
             [
                 'category' => 'Festive Wear',
@@ -69,7 +69,7 @@ class DatabaseSeeder extends Seeder
                 'description' => 'A bright embroidered kurta made for joyful gatherings.',
                 'price' => 2199,
                 'stock_quantity' => 10,
-                'image_path' => 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=700&q=85',
+                'image_path' => null,
             ],
             [
                 'category' => 'Wedding Edit',
@@ -77,7 +77,7 @@ class DatabaseSeeder extends Seeder
                 'description' => 'A statement ensemble with a refined occasion-ready finish.',
                 'price' => 4599,
                 'stock_quantity' => 5,
-                'image_path' => 'https://images.unsplash.com/photo-1614252369475-531eba835eb1?auto=format&fit=crop&w=700&q=85',
+                'image_path' => null,
             ],
             [
                 'category' => 'Wedding Edit',
@@ -85,7 +85,7 @@ class DatabaseSeeder extends Seeder
                 'description' => 'A flowing anarkali in a calm sage palette.',
                 'price' => 3899,
                 'stock_quantity' => 6,
-                'image_path' => 'https://images.unsplash.com/photo-1610189020382-668a224d9c1e?auto=format&fit=crop&w=700&q=85',
+                'image_path' => null,
             ],
             [
                 'category' => 'Dupattas',
@@ -93,7 +93,7 @@ class DatabaseSeeder extends Seeder
                 'description' => 'An embroidered emerald accent for festive styling.',
                 'price' => 899,
                 'stock_quantity' => 15,
-                'image_path' => 'https://images.unsplash.com/photo-1618244972963-dbee1a7edc95?auto=format&fit=crop&w=700&q=85',
+                'image_path' => null,
             ],
             [
                 'category' => 'Dupattas',
@@ -101,7 +101,7 @@ class DatabaseSeeder extends Seeder
                 'description' => 'A versatile ivory dupatta with a soft, elegant drape.',
                 'price' => 799,
                 'stock_quantity' => 14,
-                'image_path' => 'https://images.unsplash.com/photo-1605763240000-7e93b172d754?auto=format&fit=crop&w=700&q=85',
+                'image_path' => null,
             ],
         ];
 

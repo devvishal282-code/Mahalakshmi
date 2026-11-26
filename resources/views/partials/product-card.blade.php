@@ -1,19 +1,19 @@
 @php
-    $fallbackImage = 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=700&q=85';
-    $imageUrl = $product->image_path && filter_var($product->image_path, FILTER_VALIDATE_URL)
-        ? $product->image_path
-        : ($product->image_path
-            ? \Illuminate\Support\Facades\Storage::disk('public')->url($product->image_path)
-            : $fallbackImage);
+    $fallbackImage = asset('images/footer-bg.webp');
+    $imageUrl = $product->primaryImage?->url() ?? $fallbackImage;
+    $productUrl = route('products.show', $product);
+    $whatsAppUrl = 'https://wa.me/919825572454?text='.rawurlencode('Hello, I would like to know more about '.$product->name.'. '.$productUrl);
 @endphp
 
-<article class="product-card" data-category-id="{{ $product->category_id }}">
+<article class="product-card" data-category-id="{{ $product->category_id }}" data-product-id="{{ $product->id }}">
     <div class="product-image">
-        <img src="{{ $imageUrl }}" alt="{{ $product->name }}" onerror="this.onerror=null;this.src='{{ $fallbackImage }}';">
-        <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
+        <a href="{{ $productUrl }}" aria-label="View {{ $product->name }}">
+            <img src="{{ $imageUrl }}" alt="{{ $product->name }}" onerror="this.onerror=null;this.src='{{ $fallbackImage }}';">
+        </a>
+        <button class="heart" type="button" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
         <span>{{ $product->category?->name ?? 'Collection' }}</span>
     </div>
-    <h3>{{ $product->name }}</h3>
+    <h3><a href="{{ $productUrl }}">{{ $product->name }}</a></h3>
     <p class="rating">₹{{ number_format((float) $product->price) }} <em>{{ $product->stock_quantity }} in stock</em></p>
-    <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
+    <a class="whatsapp" href="{{ $whatsAppUrl }}" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</a>
 </article>

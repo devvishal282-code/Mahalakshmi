@@ -30,31 +30,15 @@
                 </div>
 
                 <div class="admin-product-field admin-product-field-full">
-                    <label for="product-collection-dropdown">Collections</label>
-                    <input type="hidden" name="collection_ids[]" value="">
-                    <details id="product-collection-dropdown" class="admin-product-collection-dropdown">
-                        <summary id="product-collections-summary">
-                            {{ count($selectedCollectionIds) ? count($selectedCollectionIds).' selected' : 'Select collections' }}
-                        </summary>
-                        <div class="admin-product-collection-options" role="group" aria-labelledby="product-collections-summary">
-                            @forelse ($collections as $collection)
-                                <label class="admin-product-collection-option">
-                                    <input
-                                        type="checkbox"
-                                        name="collection_ids[]"
-                                        value="{{ $collection->id }}"
-                                        @checked(in_array($collection->id, $selectedCollectionIds))
-                                    >
-                                    <span>{{ $collection->title }}</span>
-                                    @if ($collection->status === 'draft')
-                                        <small>Draft</small>
-                                    @endif
-                                </label>
-                            @empty
-                                <p class="admin-product-collection-empty">No collections available.</p>
-                            @endforelse
-                        </div>
-                    </details>
+                    <label for="collection_ids">Collections</label>
+                    <select id="collection_ids" class="admin-product-collections-select" name="collection_ids[]" multiple data-placeholder="Search and select collections">
+                        @foreach ($collections as $collection)
+                            <option value="{{ $collection->id }}" @selected(in_array($collection->id, old('collection_ids', $selectedCollectionIds)))>
+                                {{ $collection->title }}{{ $collection->status === 'draft' ? ' (Draft)' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <small class="admin-product-image-hint">Choose one or more collections. Start typing to search.</small>
                 </div>
 
                 <div class="admin-product-field admin-product-field-full">
@@ -73,47 +57,35 @@
                 </div>
 
                 <div class="admin-product-field admin-product-field-full">
-                    <label for="product_image">Product image</label>
+                    <label for="product_images">Product images <span aria-hidden="true">*</span></label>
                     <div class="admin-product-file-picker">
                         <input
-                            id="product_image"
-                            name="product_image"
+                            id="product_images"
+                            name="product_images[]"
                             type="file"
                             accept="image/jpeg,image/png,image/webp"
-                            aria-describedby="product-image-file-name product-image-hint"
+                            aria-describedby="product-image-hint"
+                            multiple
                         >
-                        <label class="admin-product-file-picker-button" for="product_image">
-                            Browse
+                        <label class="admin-product-file-picker-button" for="product_images">
+                            Add images
                         </label>
-                        <div
-                            id="product-image-file-name"
-                            class="admin-product-file-name"
-                            data-initial-file-name="{{ $product?->image_path ? basename($product->image_path) : '' }}"
-                            aria-live="polite"
-                            @unless ($product?->image_path) hidden @endunless
-                        >
-                            <span class="admin-product-file-new" hidden>new</span>
-                            <span class="admin-product-file-name-text">{{ $product?->image_path ? basename($product->image_path) : '' }}</span>
-                            <button
-                                class="admin-product-file-remove"
-                                type="button"
-                                aria-label="Remove selected image"
-                                title="Remove selected image"
-                                hidden
-                            >&times;</button>
-                        </div>
                     </div>
-                    <small id="product-image-hint" class="admin-product-image-hint">JPG, PNG, or WebP. Maximum file size: 2 MB.</small>
-                    <div class="admin-product-image-preview">
-                        <img
-                            id="product-image-preview"
-                            src="{{ $imagePreviewUrl ?? '' }}"
-                            data-initial-src="{{ $imagePreviewUrl ?? '' }}"
-                            alt="{{ $product?->name ? $product->name.' image preview' : 'Selected product image preview' }}"
-                            @if (! $imagePreviewUrl) hidden @endif
-                        >
-                        <p id="product-image-preview-empty" @if ($imagePreviewUrl) hidden @endif>
-                            {{ $product?->image_path ? 'The saved image is unavailable for preview.' : 'The selected image preview will appear here.' }}
+                    <small id="product-image-hint" class="admin-product-image-hint">Add up to 10 JPG, PNG, or WebP images, maximum 2 MB each. Select exactly one primary image.</small>
+                    <div id="removed-product-images"></div>
+                    <div id="product-image-gallery" class="admin-product-image-gallery" aria-live="polite">
+                        @foreach ($productImages as $image)
+                            <article class="admin-product-image-card" data-existing-image="{{ $image->id }}">
+                                <img src="{{ $image->url() }}" alt="{{ $product?->name }} image {{ $loop->iteration }}">
+                                <label class="admin-product-primary-choice">
+                                    <input type="radio" name="primary_image" value="existing:{{ $image->id }}" required @checked($image->is_primary)>
+                                    <span>Primary</span>
+                                </label>
+                                <button type="button" class="admin-product-image-remove" data-remove-existing-image="{{ $image->id }}" aria-label="Remove image {{ $loop->iteration }}">&times;</button>
+                            </article>
+                        @endforeach
+                        <p id="product-image-gallery-empty" class="admin-product-image-gallery-empty" @if ($productImages->isNotEmpty()) hidden @endif>
+                            No images selected yet.
                         </p>
                     </div>
                 </div>

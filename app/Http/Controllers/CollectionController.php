@@ -116,7 +116,7 @@ class CollectionController extends Controller
         $products = $collection->products()
             ->where('products.status', 'active')
             ->where('products.show_marketplace', true)
-            ->with('category:id,name')
+            ->with(['category:id,name', 'primaryImage'])
             ->latest('products.created_at')
             ->get();
 

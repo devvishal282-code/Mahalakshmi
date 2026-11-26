@@ -12,11 +12,14 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Throwable;
 
 class ProductController extends Controller
 {
@@ -33,7 +36,7 @@ class ProductController extends Controller
         $search = trim($request->string('search.value')->toString());
 
         $query = Product::query()
-            ->with(['category:id,name', 'collections:id,title']);
+            ->with(['category:id,name', 'collections:id,title', 'primaryImage']);
         $totalRecords = (clone $query)->count();
 
         if ($search !== '') {
@@ -108,8 +111,8 @@ class ProductController extends Controller
                 'description' => $product->description,
                 'price' => $product->price,
                 'stock_quantity' => $product->stock_quantity,
-                'image_path' => $product->image_path,
-                'image_url' => $this->productImagePreviewUrl($product->image_path),
+                'image_path' => $product->primaryImage?->image_path,
+                'image_url' => $this->productImagePreviewUrl($product->primaryImage?->image_path),
                 'status' => $product->status,
                 'show_marketplace' => $product->show_marketplace,
                 'actions' => $action,
@@ -141,25 +144,50 @@ class ProductController extends Controller
             abort(404);
         }
 
-        $product = Product::findOrFail($productId);
+        $product = Product::query()->with('images')->findOrFail($productId);
 
         return $this->productFormResponse($request, $product);
     }
 
     public function store(StoreProductRequest $request): JsonResponse|RedirectResponse
     {
-        $productData = $request->validated();
-        $collectionIds = array_values(array_filter($productData['collection_ids'] ?? []));
-        unset($productData['product_image'], $productData['collection_ids']);
-
-        if ($request->hasFile('product_image')) {
-            $productData['image_path'] = $this->storeProductImage($request->file('product_image'));
-        }
-
+        $validated = $request->validated();
+        $collectionIds = array_values(array_filter($validated['collection_ids'] ?? []));
+        $productData = Arr::except($validated, [
+            'collection_ids',
+            'product_images',
+            'removed_image_ids',
+            'primary_image',
+        ]);
         $productData['show_marketplace'] = $request->boolean('show_marketplace');
+        $storedPaths = [];
 
-        $product = Product::create($productData);
-        $product->collections()->sync($collectionIds);
+        try {
+            foreach ($request->file('product_images', []) as $image) {
+                $storedPaths[] = $this->storeProductImage($image);
+            }
+
+            $primaryIndex = (int) Str::after((string) $validated['primary_image'], 'new:');
+
+            DB::transaction(function () use ($productData, $collectionIds, $storedPaths, $primaryIndex): void {
+                $product = Product::create($productData);
+                $product->collections()->sync($collectionIds);
+
+                foreach ($storedPaths as $index => $imagePath) {
+                    $product->images()->create([
+                        'image_path' => $imagePath,
+                        'is_primary' => $index === $primaryIndex,
+                        'sort_order' => $index,
+                    ]);
+                }
+
+                $product->update(['image_path' => $storedPaths[$primaryIndex]]);
+            });
+        } catch (Throwable $exception) {
+            $this->deleteProductImages($storedPaths);
+
+            throw $exception;
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -175,30 +203,63 @@ class ProductController extends Controller
 
     public function update(StoreProductRequest $request, Product $product): JsonResponse|RedirectResponse
     {
-        $productData = $request->validated();
-        $shouldSyncCollections = array_key_exists('collection_ids', $productData);
-        $collectionIds = array_values(array_filter($productData['collection_ids'] ?? []));
-        unset($productData['product_image'], $productData['collection_ids']);
-
-        $previousImagePath = $product->image_path;
-        $newImagePath = null;
-
-        if ($request->hasFile('product_image')) {
-            $newImagePath = $this->storeProductImage($request->file('product_image'));
-            $productData['image_path'] = $newImagePath;
-        }
-
+        $validated = $request->validated();
+        $collectionIds = array_values(array_filter($validated['collection_ids'] ?? []));
+        $removedImageIds = array_map('intval', $validated['removed_image_ids'] ?? []);
+        $productData = Arr::except($validated, [
+            'collection_ids',
+            'product_images',
+            'removed_image_ids',
+            'primary_image',
+        ]);
         $productData['show_marketplace'] = $request->boolean('show_marketplace');
+        $newPaths = [];
+        $removedPaths = [];
 
-        $product->update($productData);
+        try {
+            foreach ($request->file('product_images', []) as $image) {
+                $newPaths[] = $this->storeProductImage($image);
+            }
 
-        if ($shouldSyncCollections) {
-            $product->collections()->sync($collectionIds);
+            DB::transaction(function () use ($product, $productData, $collectionIds, $removedImageIds, $newPaths, $validated, &$removedPaths): void {
+                $lockedProduct = Product::query()->lockForUpdate()->findOrFail($product->id);
+                $removedImages = $lockedProduct->images()->whereKey($removedImageIds)->get();
+                $removedPaths = $removedImages->pluck('image_path')->all();
+                $removedImages->each->delete();
+
+                $lockedProduct->images()->update(['is_primary' => false]);
+                $nextSortOrder = (int) $lockedProduct->images()->max('sort_order') + 1;
+                $newImageIds = [];
+
+                foreach ($newPaths as $index => $imagePath) {
+                    $image = $lockedProduct->images()->create([
+                        'image_path' => $imagePath,
+                        'is_primary' => false,
+                        'sort_order' => $nextSortOrder + $index,
+                    ]);
+                    $newImageIds[$index] = $image->id;
+                }
+
+                [$primaryType, $primaryIdentifier] = explode(':', (string) $validated['primary_image'], 2);
+                $primaryImageId = $primaryType === 'existing'
+                    ? (int) $primaryIdentifier
+                    : $newImageIds[(int) $primaryIdentifier];
+                $primaryImage = $lockedProduct->images()->whereKey($primaryImageId)->firstOrFail();
+                $primaryImage->update(['is_primary' => true]);
+
+                $lockedProduct->update([
+                    ...$productData,
+                    'image_path' => $primaryImage->image_path,
+                ]);
+                $lockedProduct->collections()->sync($collectionIds);
+            });
+        } catch (Throwable $exception) {
+            $this->deleteProductImages($newPaths);
+
+            throw $exception;
         }
 
-        if ($newImagePath !== null && $previousImagePath !== $newImagePath) {
-            $this->deleteReplacedProductImage($previousImagePath, $product);
-        }
+        $this->deleteProductImages($removedPaths);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -212,10 +273,21 @@ class ProductController extends Controller
             ->with('status', 'Product updated successfully.');
     }
 
-    public function destroy(Request $request)
+    public function destroy(Request $request): JsonResponse
     {
-        $product = Product::findOrFail(Crypt::decrypt($request->id));
-        $product->delete();
+        $validated = $request->validate(['id' => ['required', 'string']]);
+
+        try {
+            $productId = Crypt::decrypt($validated['id']);
+        } catch (DecryptException) {
+            abort(404);
+        }
+
+        $product = Product::query()->with('images')->findOrFail($productId);
+        $imagePaths = $product->images->pluck('image_path')->all();
+
+        DB::transaction(fn () => $product->forceDelete());
+        $this->deleteProductImages($imagePaths);
 
         return response()->json(['success' => true, 'message' => 'Product Deleted Successfully.']);
     }
@@ -227,7 +299,7 @@ class ProductController extends Controller
             'collections' => Collection::query()->orderBy('sort_order')->orderBy('title')->get(['id', 'title', 'status']),
             'product' => $product,
             'selectedCollectionIds' => $product ? $product->collections()->pluck('collections.id')->all() : [],
-            'imagePreviewUrl' => $this->productImagePreviewUrl($product?->image_path),
+            'productImages' => $product?->images ?? collect(),
         ];
 
         if ($request->expectsJson()) {
@@ -251,20 +323,17 @@ class ProductController extends Controller
         return $imagePath;
     }
 
-    private function deleteReplacedProductImage(?string $imagePath, Product $product): void
+    /** @param array<int, string> $imagePaths */
+    private function deleteProductImages(array $imagePaths): void
     {
-        if ($imagePath === null || ! Str::startsWith($imagePath, 'products/')) {
-            return;
-        }
+        foreach (array_unique($imagePaths) as $imagePath) {
+            if (! Str::startsWith($imagePath, 'products/')) {
+                continue;
+            }
 
-        if (
-            Storage::disk('public')->exists($imagePath)
-            && ! Storage::disk('public')->delete($imagePath)
-        ) {
-            Log::warning('Unable to remove the replaced product image.', [
-                'product_id' => $product->id,
-                'image_path' => $imagePath,
-            ]);
+            if (Storage::disk('public')->exists($imagePath) && ! Storage::disk('public')->delete($imagePath)) {
+                Log::warning('Unable to remove a product image.', ['image_path' => $imagePath]);
+            }
         }
     }
 
@@ -274,18 +343,14 @@ class ProductController extends Controller
             return null;
         }
 
-        if (Str::startsWith($imagePath, ['http://', 'https://'])) {
-            return $imagePath;
+        if (! Str::startsWith($imagePath, 'products/')) {
+            return null;
         }
 
         $relativePath = ltrim($imagePath, '/');
 
         if (Storage::disk('public')->exists($relativePath)) {
             return Storage::disk('public')->url($relativePath);
-        }
-
-        if (is_file(public_path($relativePath))) {
-            return asset($relativePath);
         }
 
         return null;

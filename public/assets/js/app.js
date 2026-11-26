@@ -45,6 +45,35 @@ if (strip) {
     });
 }
 
+document.querySelectorAll('[data-product-gallery]').forEach((gallery) => {
+  const mainImage = gallery.querySelector('[data-product-main-image]');
+  const thumbnails = Array.from(gallery.querySelectorAll('[data-gallery-thumbnail]'));
+  let activeIndex = Math.max(0, thumbnails.findIndex((thumbnail) => thumbnail.classList.contains('is-active')));
+
+  const showImage = (index) => {
+    if (!mainImage || thumbnails.length === 0) {
+      return;
+    }
+
+    activeIndex = (index + thumbnails.length) % thumbnails.length;
+    const activeThumbnail = thumbnails[activeIndex];
+    mainImage.src = activeThumbnail.dataset.imageSrc;
+    mainImage.alt = activeThumbnail.dataset.imageAlt;
+
+    thumbnails.forEach((thumbnail, thumbnailIndex) => {
+      const isActive = thumbnailIndex === activeIndex;
+      thumbnail.classList.toggle('is-active', isActive);
+      thumbnail.setAttribute('aria-pressed', String(isActive));
+    });
+  };
+
+  thumbnails.forEach((thumbnail, index) => {
+    thumbnail.addEventListener('click', () => showImage(index));
+  });
+  gallery.querySelector('[data-gallery-previous]')?.addEventListener('click', () => showImage(activeIndex - 1));
+  gallery.querySelector('[data-gallery-next]')?.addEventListener('click', () => showImage(activeIndex + 1));
+});
+
 const wishlistStorageKey = 'mahalakshmi-wishlist';
 
 const readWishlist = () => {
@@ -77,19 +106,20 @@ const saveWishlist = (wishlist) => {
 };
 
 const getWishlistProduct = (button) => {
-  const card = button.closest('.product-card, .festive-product-card');
-  const title = card?.querySelector('h2, h3')?.textContent?.trim();
+  const card = button.closest('.product-card, .festive-product-card, .product-detail-summary');
+  const title = card?.dataset.productName || card?.querySelector('h1, h2, h3')?.textContent?.trim();
   const image = card?.querySelector('.product-image img, img');
+  const imageSource = card?.dataset.productImage || image?.src;
 
-  if (!title || !image?.src) {
+  if (!title || !imageSource) {
     return null;
   }
 
   return {
-    id: title.toLocaleLowerCase().replace(/\s+/g, ' '),
+    id: card?.dataset.productId || title.toLocaleLowerCase().replace(/\s+/g, ' '),
     name: title,
-    image: image.src,
-    alt: image.alt || title
+    image: imageSource,
+    alt: image?.alt || title
   };
 };
 

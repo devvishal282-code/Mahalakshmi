@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductImage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -52,12 +53,11 @@ it('renders the product list and add product button for admins', function () {
         ->assertSee('type="radio"', false)
         ->assertSee('value="draft" required checked', false)
         ->assertSee('role="switch"', false)
-        ->assertSee('name="product_image"', false)
+        ->assertSee('name="product_images[]"', false)
         ->assertSee('admin-product-file-picker-button', false)
-        ->assertSee('product-image-file-name', false)
-        ->assertSee('admin-product-file-new', false)
-        ->assertSee('admin-product-file-remove', false)
-        ->assertSee('id="product-image-preview"', false)
+        ->assertSee('id="product-image-gallery"', false)
+        ->assertSee('name="primary_image"', false)
+        ->assertSee('admin-product-collections-select', false)
         ->assertDontSee('name="image_path"', false);
 });
 
@@ -74,12 +74,11 @@ it('returns the add product modal form as JSON', function () {
             && str_contains($html, route('admin.products.store'))
             && str_contains($html, 'Festive Wear')
             && str_contains($html, 'data-product-modal-close')
-            && str_contains($html, 'name="product_image"')
+            && str_contains($html, 'name="product_images[]"')
             && str_contains($html, 'admin-product-file-picker-button')
-            && str_contains($html, 'product-image-file-name')
-            && str_contains($html, 'admin-product-file-new')
-            && str_contains($html, 'admin-product-file-remove')
-            && str_contains($html, 'id="product-image-preview"')
+            && str_contains($html, 'id="product-image-gallery"')
+            && str_contains($html, 'name="primary_image"')
+            && str_contains($html, 'admin-product-collections-select')
             && str_contains($html, 'admin-product-form-content')
             && str_contains($html, 'admin-product-form-actions')
             && ! str_contains($html, 'name="image_path"'));
@@ -91,7 +90,7 @@ it('returns products through the server-side DataTables endpoint', function () {
     $admin->forceFill(['is_admin' => true])->save();
     $category = Category::create(['name' => 'Festive Wear']);
     Storage::disk('public')->put('products/silk-kurta.jpg', 'image content');
-    Product::create([
+    $product = Product::create([
         'category_id' => $category->id,
         'name' => 'Silk Kurta',
         'description' => 'Festive wear style',
@@ -100,6 +99,11 @@ it('returns products through the server-side DataTables endpoint', function () {
         'image_path' => 'products/silk-kurta.jpg',
         'status' => 'active',
         'show_marketplace' => true,
+    ]);
+    ProductImage::create([
+        'product_id' => $product->id,
+        'image_path' => 'products/silk-kurta.jpg',
+        'is_primary' => true,
     ]);
 
     $this->actingAs($admin)
@@ -132,6 +136,11 @@ it('updates a product from the edit form', function () {
         'stock_quantity' => 2,
         'status' => 'draft',
     ]);
+    $productImage = ProductImage::create([
+        'product_id' => $product->id,
+        'image_path' => 'products/old-kurta.jpg',
+        'is_primary' => true,
+    ]);
 
     $this->actingAs($admin)
         ->getJson(route('admin.products.edit', ['id' => Crypt::encrypt($product->id)]))
@@ -147,6 +156,7 @@ it('updates a product from the edit form', function () {
             'price' => '699.00',
             'stock_quantity' => 5,
             'status' => 'active',
+            'primary_image' => 'existing:'.$productImage->id,
         ])
         ->assertOk()
         ->assertSee('Product updated successfully.')
@@ -244,6 +254,7 @@ it('rejects invalid product input without creating a product', function () {
 });
 
 it('creates a product with optional category and marketplace visibility', function () {
+    Storage::fake('public');
     $admin = User::factory()->create();
     $admin->forceFill(['is_admin' => true])->save();
 
@@ -255,6 +266,8 @@ it('creates a product with optional category and marketplace visibility', functi
             'stock_quantity' => 12,
             'status' => 'active',
             'show_marketplace' => '1',
+            'product_images' => [UploadedFile::fake()->image('everyday.jpg')],
+            'primary_image' => 'new:0',
         ])
         ->assertRedirect(route('admin.products.index'))
         ->assertSessionHas('status', 'Product added successfully.');
@@ -276,6 +289,7 @@ it('creates a product with optional category and marketplace visibility', functi
 });
 
 it('keeps new products hidden from the marketplace when the checkbox is unchecked', function () {
+    Storage::fake('public');
     $admin = User::factory()->create();
     $admin->forceFill(['is_admin' => true])->save();
 
@@ -285,6 +299,8 @@ it('keeps new products hidden from the marketplace when the checkbox is unchecke
             'price' => '599.00',
             'stock_quantity' => 3,
             'status' => 'draft',
+            'product_images' => [UploadedFile::fake()->image('draft.jpg')],
+            'primary_image' => 'new:0',
         ])
         ->assertRedirect(route('admin.products.index'));
 
@@ -314,6 +330,7 @@ it('rejects a product with a category that does not exist', function () {
 });
 
 it('creates and updates products with AJAX JSON responses', function () {
+    Storage::fake('public');
     $admin = User::factory()->create();
     $admin->forceFill(['is_admin' => true])->save();
 
@@ -323,18 +340,22 @@ it('creates and updates products with AJAX JSON responses', function () {
             'price' => '899.00',
             'stock_quantity' => 6,
             'status' => 'draft',
+            'product_images' => [UploadedFile::fake()->image('ajax.jpg')],
+            'primary_image' => 'new:0',
         ])
         ->assertCreated()
         ->assertJsonPath('success', true)
         ->assertJsonPath('message', 'Product added successfully.');
 
     $product = Product::query()->where('name', 'AJAX Kurta')->firstOrFail();
+    $productImage = $product->images()->firstOrFail();
 
     $this->putJson(route('admin.products.update', $product), [
         'name' => 'Updated AJAX Kurta',
         'price' => '999.00',
         'stock_quantity' => 8,
         'status' => 'active',
+        'primary_image' => 'existing:'.$productImage->id,
     ])
         ->assertOk()
         ->assertJsonPath('success', true)
@@ -348,7 +369,7 @@ it('creates and updates products with AJAX JSON responses', function () {
     ]);
 });
 
-it('stores uploaded product images and replaces the previous image on update', function () {
+it('stores multiple product images and safely replaces a removed primary image', function () {
     Storage::fake('public');
     $admin = User::factory()->create();
     $admin->forceFill(['is_admin' => true])->save();
@@ -359,22 +380,29 @@ it('stores uploaded product images and replaces the previous image on update', f
             'price' => '899.00',
             'stock_quantity' => 6,
             'status' => 'draft',
-            'product_image' => UploadedFile::fake()->image('kurta.png'),
+            'product_images' => [
+                UploadedFile::fake()->image('kurta.png'),
+                UploadedFile::fake()->image('kurta-detail.jpg'),
+            ],
+            'primary_image' => 'new:0',
         ], ['Accept' => 'application/json'])
         ->assertCreated()
         ->assertJsonPath('success', true);
 
     $product = Product::query()->where('name', 'Image Kurta')->firstOrFail();
     $firstImagePath = $product->image_path;
+    $firstImage = $product->images()->where('is_primary', true)->firstOrFail();
 
     expect(str_starts_with($firstImagePath, 'products/'))->toBeTrue();
+    expect($product->images()->count())->toBe(2);
     Storage::disk('public')->assertExists($firstImagePath);
 
     $editResponse = $this->getJson(route('admin.products.edit', [
         'id' => Crypt::encrypt($product->id),
     ]))->assertOk();
 
-    $editResponse->assertJsonPath('html', fn (string $html): bool => str_contains($html, 'name="product_image"')
+    $editResponse->assertJsonPath('html', fn (string $html): bool => str_contains($html, 'name="product_images[]"')
+        && str_contains($html, 'value="existing:'.$firstImage->id.'"')
         && str_contains($html, Storage::disk('public')->url($firstImagePath)));
 
     $this->post(route('admin.products.update', $product), [
@@ -383,13 +411,16 @@ it('stores uploaded product images and replaces the previous image on update', f
         'price' => '899.00',
         'stock_quantity' => 6,
         'status' => 'draft',
-        'product_image' => UploadedFile::fake()->image('replacement.webp'),
+        'product_images' => [UploadedFile::fake()->image('replacement.webp')],
+        'removed_image_ids' => [$firstImage->id],
+        'primary_image' => 'new:0',
     ], ['Accept' => 'application/json'])
         ->assertOk()
         ->assertJsonPath('success', true);
 
     $product->refresh();
     expect($product->image_path)->not->toBe($firstImagePath);
+    expect($product->images()->where('is_primary', true)->count())->toBe(1);
     Storage::disk('public')->assertExists($product->image_path);
     Storage::disk('public')->assertMissing($firstImagePath);
 });
@@ -406,6 +437,11 @@ it('keeps the existing image when a product is updated without a replacement fil
         'image_path' => $imagePath,
         'status' => 'draft',
     ]);
+    $productImage = ProductImage::create([
+        'product_id' => $product->id,
+        'image_path' => $imagePath,
+        'is_primary' => true,
+    ]);
 
     $this->actingAs($admin)
         ->putJson(route('admin.products.update', $product), [
@@ -413,6 +449,7 @@ it('keeps the existing image when a product is updated without a replacement fil
             'price' => '999.00',
             'stock_quantity' => 8,
             'status' => 'active',
+            'primary_image' => 'existing:'.$productImage->id,
         ])
         ->assertOk()
         ->assertJsonPath('success', true);
@@ -436,10 +473,11 @@ it('rejects non-image product uploads', function () {
             'price' => '899.00',
             'stock_quantity' => 6,
             'status' => 'draft',
-            'product_image' => UploadedFile::fake()->create('notes.txt', 10, 'text/plain'),
+            'product_images' => [UploadedFile::fake()->create('notes.txt', 10, 'text/plain')],
+            'primary_image' => 'new:0',
         ], ['Accept' => 'application/json'])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('product_image');
+        ->assertJsonValidationErrors('product_images.0');
 
     $this->assertDatabaseCount('products', 0);
     expect(Storage::disk('public')->allFiles())->toBeEmpty();
@@ -456,10 +494,11 @@ it('rejects product images larger than 2 MB', function () {
             'price' => '899.00',
             'stock_quantity' => 6,
             'status' => 'draft',
-            'product_image' => UploadedFile::fake()->image('oversized.png')->size(2049),
+            'product_images' => [UploadedFile::fake()->image('oversized.png')->size(2049)],
+            'primary_image' => 'new:0',
         ], ['Accept' => 'application/json'])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('product_image');
+        ->assertJsonValidationErrors('product_images.0');
 
     $this->assertDatabaseCount('products', 0);
     expect(Storage::disk('public')->allFiles())->toBeEmpty();

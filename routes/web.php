@@ -6,6 +6,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\ContentPageController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\StorefrontProductController;
 use App\Http\Middleware\EnsureAdmin;
 use App\Models\Category;
 use App\Models\Product;
@@ -51,7 +52,7 @@ Route::get('/', function () {
         ->get();
 
     $products = Product::query()
-        ->with('category:id,name')
+        ->with(['category:id,name', 'primaryImage'])
         ->where('status', 'active')
         ->where('show_marketplace', true)
         ->whereIn('category_id', $categories->modelKeys())
@@ -60,6 +61,8 @@ Route::get('/', function () {
 
     return view('welcome', compact('categories', 'products'));
 })->name('home');
+
+Route::get('/products/{product}', [StorefrontProductController::class, 'show'])->name('products.show');
 
 Route::view('/wishlist', 'wishlist.index')->name('wishlist.index');
 

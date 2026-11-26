@@ -4,6 +4,7 @@
 
 @push('styles')
     <link rel="stylesheet" href="https://cdn.datatables.net/2.3.2/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
 @endpush
 
 @section('content')
@@ -60,6 +61,8 @@
 
 @push('scripts')
     <script src="https://cdn.datatables.net/2.3.2/js/dataTables.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    @include('admin.products._form-scripts')
     <script>
         
     function initProductsTable() {
@@ -189,13 +192,6 @@
         $(document).ready(function(){
             initProductsTable();
 
-            $(document).on('change', '.admin-product-collection-dropdown input[type="checkbox"]', function () {
-                var collectionCount = $(this).closest('.admin-product-collection-dropdown')
-                    .find('input[type="checkbox"]:checked').length;
-
-                $('#product-collections-summary').text(collectionCount ? collectionCount + ' selected' : 'Select collections');
-            });
-
             var productModal = document.getElementById('product-modal');
             var productModalBody = $('#product-modal-body');
 
@@ -214,6 +210,7 @@
                     success: function(response) {
                         $('#product-modal-title').text(response.title);
                         productModalBody.html(response.html);
+                        window.initializeProductForm(productModalBody.find('#product-form')[0]);
                     },
                     error: function(xhr) {
                         productModalBody.html('<p class="admin-product-modal-loading">Unable to load the product form.</p>');
