@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProductRequest;
 use App\Models\Category;
+use App\Models\Collection;
 use App\Models\Product;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\View\View;
@@ -32,7 +33,7 @@ class ProductController extends Controller
         $search = trim($request->string('search.value')->toString());
 
         $query = Product::query()
-            ->with(['category:id,name']);
+            ->with(['category:id,name', 'collections:id,title']);
         $totalRecords = (clone $query)->count();
 
         if ($search !== '') {
@@ -46,6 +47,9 @@ class ProductController extends Controller
                     ->orWhere('products.image_path', 'LIKE', "%{$search}%")
                     ->orWhereHas('category', function ($categoryQuery) use ($search): void {
                         $categoryQuery->where('name', 'LIKE', "%{$search}%");
+                    })
+                    ->orWhereHas('collections', function ($collectionQuery) use ($search): void {
+                        $collectionQuery->where('title', 'LIKE', "%{$search}%");
                     });
             });
         }
@@ -100,6 +104,7 @@ class ProductController extends Controller
             return [
                 'name' => $product->name,
                 'category_name' => $product->category?->name ?? 'Uncategorized',
+                'collection_names' => $product->collections->pluck('title')->implode(', '),
                 'description' => $product->description,
                 'price' => $product->price,
                 'stock_quantity' => $product->stock_quantity,
@@ -144,7 +149,8 @@ class ProductController extends Controller
     public function store(StoreProductRequest $request): JsonResponse|RedirectResponse
     {
         $productData = $request->validated();
-        unset($productData['product_image']);
+        $collectionIds = array_values(array_filter($productData['collection_ids'] ?? []));
+        unset($productData['product_image'], $productData['collection_ids']);
 
         if ($request->hasFile('product_image')) {
             $productData['image_path'] = $this->storeProductImage($request->file('product_image'));
@@ -152,7 +158,8 @@ class ProductController extends Controller
 
         $productData['show_marketplace'] = $request->boolean('show_marketplace');
 
-        Product::create($productData);
+        $product = Product::create($productData);
+        $product->collections()->sync($collectionIds);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -169,7 +176,9 @@ class ProductController extends Controller
     public function update(StoreProductRequest $request, Product $product): JsonResponse|RedirectResponse
     {
         $productData = $request->validated();
-        unset($productData['product_image']);
+        $shouldSyncCollections = array_key_exists('collection_ids', $productData);
+        $collectionIds = array_values(array_filter($productData['collection_ids'] ?? []));
+        unset($productData['product_image'], $productData['collection_ids']);
 
         $previousImagePath = $product->image_path;
         $newImagePath = null;
@@ -182,6 +191,10 @@ class ProductController extends Controller
         $productData['show_marketplace'] = $request->boolean('show_marketplace');
 
         $product->update($productData);
+
+        if ($shouldSyncCollections) {
+            $product->collections()->sync($collectionIds);
+        }
 
         if ($newImagePath !== null && $previousImagePath !== $newImagePath) {
             $this->deleteReplacedProductImage($previousImagePath, $product);
@@ -211,7 +224,9 @@ class ProductController extends Controller
     {
         $viewData = [
             'categories' => Category::query()->orderBy('name')->get(['id', 'name']),
+            'collections' => Collection::query()->orderBy('sort_order')->orderBy('title')->get(['id', 'title', 'status']),
             'product' => $product,
+            'selectedCollectionIds' => $product ? $product->collections()->pluck('collections.id')->all() : [],
             'imagePreviewUrl' => $this->productImagePreviewUrl($product?->image_path),
         ];
 

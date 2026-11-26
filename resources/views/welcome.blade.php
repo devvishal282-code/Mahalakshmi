@@ -84,161 +84,32 @@
             </div>
         </div>
         <div class="category-links" aria-label="Product categories">
-            <a href="#all" class="active" aria-selected="true">All</a>
-            <a href="#coord" aria-selected="false">Co-ord sets</a>
-            <a href="#festive" aria-selected="false">Festive wear</a>
-            <a href="#wedding" aria-selected="false">Wedding edit</a>
-            <a href="#dupattas" aria-selected="false">Dupattas</a>
+            <a href="#all" class="active" aria-selected="true" role="tab">All</a>
+            @foreach ($categories as $category)
+                <a href="#category-{{ $category->id }}" aria-selected="false" role="tab">{{ $category->name }}</a>
+            @endforeach
         </div>
 
         <div class="tab-content">
             <div class="tab-pane fade show active" id="all" role="tabpanel">
                 <div class="product-grid">
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=700&q=85" alt="Yellow festive suit">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                            <span>New</span>
-                        </div>
-                        <h3>Summer bloom embroidered set</h3>
-                        <p class="rating">★★★★★ <em>(24)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
-
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1585488434455-71d9f9322d7c?auto=format&fit=crop&w=700&q=85" alt="Purple festive outfit">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                            <span>Festive pick</span>
-                        </div>
-                        <h3>Lavender haze festive set</h3>
-                        <p class="rating">★★★★★ <em>(42)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
-
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1614252369475-531eba835eb1?auto=format&fit=crop&w=700&q=85" alt="Pink wedding outfit">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                            <span>Wedding edit</span>
-                        </div>
-                        <h3>Rosewood wedding ensemble</h3>
-                        <p class="rating">★★★★★ <em>(16)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
-
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1618244972963-dbee1a7edc95?auto=format&fit=crop&w=700&q=85" alt="Colorful ethnic textile">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                            <span>New</span>
-                        </div>
-                        <h3>Emerald embroidered dupatta</h3>
-                        <p class="rating">★★★★★ <em>(31)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
+                    @forelse ($products as $product)
+                        @include('partials.product-card', ['product' => $product])
+                    @empty
+                        <p>No products are available right now.</p>
+                    @endforelse
                 </div>
             </div>
 
-            <div class="tab-pane fade" id="coord" role="tabpanel">
+            @foreach ($categories as $category)
+                <div class="tab-pane fade" id="category-{{ $category->id }}" role="tabpanel">
                 <div class="product-grid">
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=700&q=85" alt="Yellow co-ord set">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                            <span>New</span>
-                        </div>
-                        <h3>Summer bloom co-ord set</h3>
-                        <p class="rating">★★★★★ <em>(24)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
-
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1614252369475-531eba835eb1?auto=format&fit=crop&w=700&q=85" alt="Pink co-ord outfit">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                        </div>
-                        <h3>Rosewood co-ord set</h3>
-                        <p class="rating">★★★★★ <em>(16)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
+                    @foreach ($products->where('category_id', $category->id) as $product)
+                        @include('partials.product-card', ['product' => $product])
+                    @endforeach
                 </div>
-            </div>
-
-            <div class="tab-pane fade" id="festive" role="tabpanel">
-                <div class="product-grid">
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1585488434455-71d9f9322d7c?auto=format&fit=crop&w=700&q=85" alt="Purple festive outfit">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                            <span>Festive pick</span>
-                        </div>
-                        <h3>Lavender haze festive set</h3>
-                        <p class="rating">★★★★★ <em>(42)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
-
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=700&q=85" alt="Yellow festive suit">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                        </div>
-                        <h3>Golden bloom festive suit</h3>
-                        <p class="rating">★★★★★ <em>(24)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
                 </div>
-            </div>
-
-            <div class="tab-pane fade" id="wedding" role="tabpanel">
-                <div class="product-grid">
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1614252369475-531eba835eb1?auto=format&fit=crop&w=700&q=85" alt="Pink wedding outfit">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                            <span>Wedding edit</span>
-                        </div>
-                        <h3>Rosewood wedding ensemble</h3>
-                        <p class="rating">★★★★★ <em>(16)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
-
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1585488434455-71d9f9322d7c?auto=format&fit=crop&w=700&q=85" alt="Purple wedding outfit">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                        </div>
-                        <h3>Lavender wedding collection</h3>
-                        <p class="rating">★★★★★ <em>(42)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
-                </div>
-            </div>
-
-            <div class="tab-pane fade" id="dupattas" role="tabpanel">
-                <div class="product-grid">
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1618244972963-dbee1a7edc95?auto=format&fit=crop&w=700&q=85" alt="Colorful ethnic textile">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                            <span>New</span>
-                        </div>
-                        <h3>Emerald embroidered dupatta</h3>
-                        <p class="rating">★★★★★ <em>(31)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
-
-                    <article class="product-card">
-                        <div class="product-image">
-                            <img src="https://images.unsplash.com/photo-1581044777550-4cfa60707c03?auto=format&fit=crop&w=700&q=85" alt="Ivory ethnic fabric">
-                            <button class="heart" aria-label="Add to wishlist"><i class="fa-regular fa-heart"></i></button>
-                        </div>
-                        <h3>Ivory festive dupatta</h3>
-                        <p class="rating">★★★★★ <em>(18)</em></p>
-                        <button class="whatsapp"><i class="fa-brands fa-whatsapp"></i> Enquire via WhatsApp</button>
-                    </article>
-                </div>
-            </div>
+            @endforeach
         </div>
 
         <a class="button outline view-all" href="{{ route('collections.index') }}" style="width: 200px;">View all products</a>

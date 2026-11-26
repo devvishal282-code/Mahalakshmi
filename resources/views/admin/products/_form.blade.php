@@ -30,6 +30,34 @@
                 </div>
 
                 <div class="admin-product-field admin-product-field-full">
+                    <label for="product-collection-dropdown">Collections</label>
+                    <input type="hidden" name="collection_ids[]" value="">
+                    <details id="product-collection-dropdown" class="admin-product-collection-dropdown">
+                        <summary id="product-collections-summary">
+                            {{ count($selectedCollectionIds) ? count($selectedCollectionIds).' selected' : 'Select collections' }}
+                        </summary>
+                        <div class="admin-product-collection-options" role="group" aria-labelledby="product-collections-summary">
+                            @forelse ($collections as $collection)
+                                <label class="admin-product-collection-option">
+                                    <input
+                                        type="checkbox"
+                                        name="collection_ids[]"
+                                        value="{{ $collection->id }}"
+                                        @checked(in_array($collection->id, $selectedCollectionIds))
+                                    >
+                                    <span>{{ $collection->title }}</span>
+                                    @if ($collection->status === 'draft')
+                                        <small>Draft</small>
+                                    @endif
+                                </label>
+                            @empty
+                                <p class="admin-product-collection-empty">No collections available.</p>
+                            @endforelse
+                        </div>
+                    </details>
+                </div>
+
+                <div class="admin-product-field admin-product-field-full">
                     <label for="description">Description</label>
                     <textarea id="description" name="description" rows="4">{{ old('description', $product?->description) }}</textarea>
                 </div>

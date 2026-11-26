@@ -55,6 +55,12 @@
                             </svg>
                             <span>Category</span>
                         </a>
+                        <a href="{{ route('admin.collections.index') }}">
+                            <svg class="admin-menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 4h18v16H3zM7 8h10M7 12h10M7 16h6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.7" />
+                            </svg>
+                            <span>Collection</span>
+                        </a>
                     </div>
                 </div>
 
@@ -158,13 +164,16 @@
         document.addEventListener('change', (event) => {
             const input = event.target;
 
-            if (!(input instanceof HTMLInputElement) || input.id !== 'product_image') {
+            if (
+                !(input instanceof HTMLInputElement)
+                || (input.id !== 'product_image' && ! input.hasAttribute('data-admin-image-upload'))
+            ) {
                 return;
             }
 
-            const preview = document.getElementById('product-image-preview');
-            const emptyPreview = document.getElementById('product-image-preview-empty');
-            const fileName = document.getElementById('product-image-file-name');
+            const preview = document.getElementById(input.dataset.previewTarget || 'product-image-preview');
+            const emptyPreview = document.getElementById(input.dataset.emptyPreviewTarget || 'product-image-preview-empty');
+            const fileName = document.getElementById(input.dataset.fileNameTarget || 'product-image-file-name');
             const fileNameText = fileName?.querySelector('.admin-product-file-name-text');
             const newFileLabel = fileName?.querySelector('.admin-product-file-new');
             const removeFileButton = fileName?.querySelector('.admin-product-file-remove');
@@ -227,7 +236,7 @@
                 return;
             }
 
-            const fileInput = document.getElementById('product_image');
+            const fileInput = document.getElementById(removeFileButton.dataset.fileInput || 'product_image');
 
             if (!(fileInput instanceof HTMLInputElement)) {
                 return;

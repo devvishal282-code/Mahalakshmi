@@ -29,6 +29,7 @@
                         <tr>
                             <th>Product</th>
                             <th>Category</th>
+                            <th>Collections</th>
                             <th>Description</th>
                             <th>Price</th>
                             <th>Stock</th>
@@ -88,6 +89,12 @@
                     name: 'category_name',
                     orderable: true,
                     searchable: true,
+                    render: $.fn.dataTable.render.text()
+                },
+                {
+                    data: 'collection_names',
+                    name: 'collection_names',
+                    orderable: false,
                     render: $.fn.dataTable.render.text()
                 },
                 {
@@ -181,6 +188,13 @@
 
         $(document).ready(function(){
             initProductsTable();
+
+            $(document).on('change', '.admin-product-collection-dropdown input[type="checkbox"]', function () {
+                var collectionCount = $(this).closest('.admin-product-collection-dropdown')
+                    .find('input[type="checkbox"]:checked').length;
+
+                $('#product-collections-summary').text(collectionCount ? collectionCount + ' selected' : 'Select collections');
+            });
 
             var productModal = document.getElementById('product-modal');
             var productModalBody = $('#product-modal-body');

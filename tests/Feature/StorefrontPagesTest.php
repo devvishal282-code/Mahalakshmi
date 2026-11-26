@@ -1,5 +1,9 @@
 <?php
 
+use App\Models\Category;
+use App\Models\Product;
+use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+
 it('renders every collection page with the shared storefront layout', function (string $routeName, string $title) {
     $response = $this->get(route($routeName));
 
@@ -44,6 +48,49 @@ it('uses the locally stored meadow video for the home hero', function () {
         ->assertOk()
         ->assertSee('storage/videos/hero-meadow.mp4');
 });
+
+it('renders active marketplace products in the all and category tabs', function () {
+    $category = Category::query()->create([
+        'name' => 'Demo Festive Wear',
+        'status' => 'active',
+    ]);
+
+    Product::query()->create([
+        'category_id' => $category->id,
+        'name' => 'Demo Celebration Set',
+        'description' => 'A test product for the storefront.',
+        'price' => 1499,
+        'stock_quantity' => 4,
+        'image_path' => 'https://example.test/demo.jpg',
+        'status' => 'active',
+        'show_marketplace' => true,
+    ]);
+
+    Product::query()->create([
+        'category_id' => $category->id,
+        'name' => 'Hidden Draft Product',
+        'price' => 999,
+        'status' => 'draft',
+        'show_marketplace' => true,
+    ]);
+
+    Product::query()->create([
+        'category_id' => $category->id,
+        'name' => 'Hidden Marketplace Product',
+        'price' => 1099,
+        'status' => 'active',
+        'show_marketplace' => false,
+    ]);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('Demo Celebration Set')
+        ->assertSee('Demo Festive Wear')
+        ->assertSee('id="category-'.$category->id.'"', false)
+        ->assertSee('₹1,499')
+        ->assertDontSee('Hidden Draft Product')
+        ->assertDontSee('Hidden Marketplace Product');
+})->uses(LazilyRefreshDatabase::class);
 
 it('provides a wishlist page and links to it from the shared storefront header', function () {
     $this->get(route('wishlist.index'))

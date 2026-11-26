@@ -1,11 +1,15 @@
 <?php
 
+use App\Http\Controllers\AdminCollectionController;
 use App\Http\Controllers\AdminLoginController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\ContentPageController;
 use App\Http\Controllers\ProductController;
 use App\Http\Middleware\EnsureAdmin;
+use App\Models\Category;
+use App\Models\Product;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/admin', [AdminLoginController::class, 'show'])->name('admin');
@@ -13,6 +17,13 @@ Route::post('/admin', [AdminLoginController::class, 'login'])->middleware('throt
 Route::post('/admin/logout', [AdminLoginController::class, 'logout'])->middleware('auth')->name('admin.logout');
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', EnsureAdmin::class])->group(function () {
+    Route::get('/collections', [AdminCollectionController::class, 'index'])->name('collections.index');
+    Route::get('/collections/data', [AdminCollectionController::class, 'data'])->name('collections.data');
+    Route::get('/collections/create', [AdminCollectionController::class, 'create'])->name('collections.create');
+    Route::post('/collections', [AdminCollectionController::class, 'store'])->name('collections.store');
+    Route::get('/collections/{collection}/edit', [AdminCollectionController::class, 'edit'])->name('collections.edit');
+    Route::put('/collections/{collection}', [AdminCollectionController::class, 'update'])->name('collections.update');
+
     Route::get('/categories', [CategoryController::class, 'index'])->name('categories.index');
     Route::get('/categories/data', [CategoryController::class, 'data'])->name('categories.data');
     Route::get('/categories/create', [CategoryController::class, 'create'])->name('categories.create');
@@ -31,7 +42,23 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', EnsureAdmin::class])
 });
 
 Route::get('/', function () {
-    return view('welcome');
+    $categories = Category::query()
+        ->where('status', 'active')
+        ->whereHas('products', function (Builder $query): void {
+            $query->where('status', 'active')->where('show_marketplace', true);
+        })
+        ->orderBy('name')
+        ->get();
+
+    $products = Product::query()
+        ->with('category:id,name')
+        ->where('status', 'active')
+        ->where('show_marketplace', true)
+        ->whereIn('category_id', $categories->modelKeys())
+        ->latest()
+        ->get();
+
+    return view('welcome', compact('categories', 'products'));
 })->name('home');
 
 Route::view('/wishlist', 'wishlist.index')->name('wishlist.index');
