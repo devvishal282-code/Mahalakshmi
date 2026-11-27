@@ -141,22 +141,29 @@
         </div>
     </section>
 
-    <section class="journal wrap reveal" id="journal">
-        <div class="section-top">
-            <div>
-                <p class="eyebrow">JOURNAL</p>
-                <h2>Notes from our atelier</h2>
-            </div><a class="text-link" href="#journal">View all stories <i class="fa-solid fa-arrow-right"></i></a>
+    <section class="customer-love wrap reveal" id="customer-love" aria-labelledby="customer-love-title">
+        <div class="customer-love-heading">
+            <p class="eyebrow">OUR TESTIMONIALS</p>
+            <h2 id="customer-love-title">Customer Love</h2>
         </div>
-        <div class="journal-grid">
-            <article><img src="https://images.unsplash.com/photo-1610189020382-668a224d9c1e?auto=format&fit=crop&w=800&q=80" alt="Festive clothing" /><small>STYLE GUIDE · OCTOBER 08, 2026</small>
-                <h3>How to find your festive colour story</h3><a href="#journal">Read more</a>
+        <div class="customer-love-grid">
+            <article class="customer-love-card">
+                <img src="{{ asset('images/customer-love-mansi.png') }}" alt="Mansi Dubey wearing a berry ethnic outfit" loading="lazy" decoding="async" />
+                <div class="customer-love-copy">
+                    <div class="customer-love-stars" aria-label="5 out of 5 stars">★★★★★</div>
+                    <p>Mahalakshmi offers elegant ethnic wear, trendy co-ord sets, and premium indo-western styles crafted with perfect detailing. A trusted fashion brand for women who love classy and contemporary designs.</p>
+                    <strong>MANSHI DUBEY</strong>
+                    <span>AHMEDABAD</span>
+                </div>
             </article>
-            <article><img src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=800&q=80" alt="Fashion rack" /><small>THE ATELIER · OCTOBER 04, 2026</small>
-                <h3>Pieces that earn a place in your wardrobe</h3><a href="#journal">Read more</a>
-            </article>
-            <article><img src="https://images.unsplash.com/photo-1485968579580-b6d095142e6e?auto=format&fit=crop&w=800&q=80" alt="Woman in fashionable clothing" /><small>BEHIND THE SEAMS · SEPTEMBER 29, 2026</small>
-                <h3>The details that make an outfit linger</h3><a href="#journal">Read more</a>
+            <article class="customer-love-card">
+                <img src="{{ asset('images/customer-love-sarika.png') }}" alt="Sarika Singh wearing a pink embroidered kurta set" loading="lazy" decoding="async" />
+                <div class="customer-love-copy">
+                    <div class="customer-love-stars" aria-label="5 out of 5 stars">★★★★★</div>
+                    <p>Mahalakshmi delivers high-quality gowns, kaftans, and modern festive wear with stunning craftsmanship. The perfect destination for premium women’s fashion online.</p>
+                    <strong>SARIKA SINGH</strong>
+                    <span>PATAN</span>
+                </div>
             </article>
         </div>
     </section>

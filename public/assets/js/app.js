@@ -1,5 +1,20 @@
 const deferredVideos = document.querySelectorAll('video[data-deferred-autoplay]');
 
+const scrollProgress = document.createElement('div');
+scrollProgress.className = 'site-scroll-progress';
+scrollProgress.setAttribute('aria-hidden', 'true');
+document.body.prepend(scrollProgress);
+
+const updateScrollProgress = () => {
+  const scrollableHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = scrollableHeight > 0 ? (window.scrollY / scrollableHeight) * 100 : 0;
+  scrollProgress.style.setProperty('--scroll-progress', `${Math.min(100, Math.max(0, progress))}%`);
+};
+
+updateScrollProgress();
+window.addEventListener('scroll', updateScrollProgress, { passive: true });
+window.addEventListener('resize', updateScrollProgress, { passive: true });
+
 const startDeferredVideos = () => {
   deferredVideos.forEach((video) => {
     video.querySelectorAll('source[data-src]').forEach((source) => {
@@ -279,7 +294,42 @@ const revealObserver = new IntersectionObserver((entries) => {
   });
 }, { threshold: 0.12 });
 
-document.querySelectorAll('.reveal').forEach((section) => revealObserver.observe(section));
+document.querySelectorAll('.reveal').forEach((section, sectionIndex) => {
+  section.style.setProperty('--reveal-delay', `${Math.min(sectionIndex * 70, 280)}ms`);
+
+  section.querySelectorAll(
+    '.look-card, .product-card, .statement-grid > div, .customer-love-card, .journal-grid article'
+  ).forEach((item, itemIndex) => {
+    item.style.setProperty('--stagger-index', itemIndex);
+  });
+
+  revealObserver.observe(section);
+});
+
+document.querySelectorAll('a[href]').forEach((link) => {
+  const destination = link.getAttribute('href');
+
+  if (
+    !destination
+    || destination.startsWith('#')
+    || destination.startsWith('mailto:')
+    || destination.startsWith('tel:')
+    || link.target === '_blank'
+    || link.origin !== window.location.origin
+  ) {
+    return;
+  }
+
+  link.addEventListener('click', (event) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    document.body.classList.add('is-leaving');
+  });
+});
+
+window.addEventListener('pageshow', () => document.body.classList.remove('is-leaving'));
 
 const backTop = document.querySelector('.back-top');
 window.addEventListener('scroll', () => backTop.classList.toggle('show', window.scrollY > 500), { passive: true });
